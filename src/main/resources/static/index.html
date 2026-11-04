@@ -945,7 +945,7 @@
   .gv-foot kbd { margin: 0 1px; }
   @media (max-width: 720px) { .gv-bar .search.sm { flex-basis: 100%; } .gv-t .txt, .gv-t .why { max-width: 160px; } }
   /* ---------- grid: sidebar of kinds ---------- */
-  .gv-body { flex: 1; min-height: 0; display: grid; grid-template-columns: 236px minmax(0, 1fr); transition: grid-template-columns .18s ease; }
+  .gv-body { flex: 1; min-height: 0; display: grid; grid-template-columns: 244px minmax(0, 1fr); transition: grid-template-columns .18s ease; }
   .gv-body.mini { grid-template-columns: 56px minmax(0, 1fr); }
   .gv-main { display: flex; flex-direction: column; min-height: 0; min-width: 0; }
   .gv-nav { border-right: 1px solid var(--border); background: var(--surface); display: flex; flex-direction: column; min-height: 0; min-width: 0; overflow: hidden; }
@@ -959,7 +959,22 @@
   .gv-nav-q input { width: 100%; box-sizing: border-box; height: 30px; padding: 0 8px 0 30px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text); font: inherit; font-size: 12.5px; }
   .gv-nav-q input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
   .gv-nav.mini .gv-nav-q { display: none; }
-  .gv-nav-list { overflow-y: auto; overflow-x: hidden; padding: 2px 8px 12px; flex: 1; scrollbar-width: thin; }
+  .gv-nav-list { overflow-y: auto; overflow-x: hidden; padding: 2px 8px 12px; flex: 1;
+    scrollbar-width: thin; scrollbar-color: transparent transparent; scrollbar-gutter: stable; }
+  .gv-nav:hover .gv-nav-list, .gv-nav-list:focus-within { scrollbar-color: color-mix(in srgb, var(--text) 22%, transparent) transparent; }
+  .gv-nav-list::-webkit-scrollbar { width: 6px; }
+  .gv-nav-list::-webkit-scrollbar-track { background: transparent; }
+  .gv-nav-list::-webkit-scrollbar-thumb { background: transparent; border-radius: 3px; }
+  .gv-nav:hover .gv-nav-list::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--text) 22%, transparent); }
+  .gv-nav-list::-webkit-scrollbar-thumb:hover { background: color-mix(in srgb, var(--text) 38%, transparent); }
+  .gv-nav-list::-webkit-scrollbar-button { display: none; height: 0; }
+  /* the table scrolls the same way: thin, no track, visible while hovering */
+  .gv-wrap { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--text) 14%, transparent) transparent; }
+  .gv-wrap:hover { scrollbar-color: color-mix(in srgb, var(--text) 28%, transparent) transparent; }
+  .gv-wrap::-webkit-scrollbar { width: 8px; height: 8px; } .gv-wrap::-webkit-scrollbar-track { background: transparent; }
+  .gv-wrap::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--text) 14%, transparent); border-radius: 4px; }
+  .gv-wrap:hover::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--text) 28%, transparent); }
+  .gv-wrap::-webkit-scrollbar-button { display: none; height: 0; }
   .gv-ng + .gv-ng { margin-top: 4px; }
   .gv-nh { display: flex; align-items: center; gap: 6px; width: 100%; height: 28px; padding: 0 8px 0 4px; border: 0; background: none; color: var(--muted); font: inherit;
     font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; cursor: pointer; border-radius: 7px; }
