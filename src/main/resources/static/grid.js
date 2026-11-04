@@ -110,7 +110,7 @@ function renderGrid() {
   const item = k => {
     const n0 = groups.get(k)[0], bad = groups.get(k).filter(n => n.health === 'error').length;
     return `<button role="tab" data-gtab="${esc(k)}" class="${tab === k ? 'on' : ''}" aria-selected="${tab === k}" style="--c:${kindInfo(n0).color}"
-      title="${esc(label(k))} · ${groups.get(k).length}${n0.group ? ' · ' + esc(n0.group) : ''}${bad ? ` · ${bad} lỗi` : ''}"><span class="ic">${icon(iconKind(n0))}${bad ? '<i class="bad"></i>' : ''}</span><span class="l">${esc(label(k))}</span><span class="n">${groups.get(k).length}</span></button>`;
+      title="${esc(label(k))} · ${groups.get(k).length}${n0.group ? ' · ' + esc(n0.group) : ''}${bad ? ` · ${bad} lỗi` : ''}"><span class="ic">${icon(iconKind(n0))}</span><span class="l">${esc(label(k))}</span>${bad ? '<i class="bad"></i>' : ''}<span class="n">${groups.get(k).length}</span></button>`;
   };
   const nq = gv.navQ.toLowerCase();
   const navGroups = GRID_GROUPS.map(([name, kinds]) => [name, order.filter(k => !groups.get(k)[0].group && kinds.includes(groups.get(k)[0].kind))]);
@@ -125,8 +125,8 @@ function renderGrid() {
     const total = list.reduce((t, k) => t + groups.get(k).length, 0);
     const holdsTab = list.includes(tab), bad = list.some(k => groups.get(k).some(n => n.health === 'error'));
     return `<section class="gv-ng ${folded ? 'folded' : ''}"><button class="gv-nh" data-navfold="${esc(name)}" aria-expanded="${!folded}" title="${folded ? 'Mở' : 'Gập'} nhóm ${esc(name)}">
-      <svg class="i caret" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg><span>${esc(name)}</span>
-      ${folded && holdsTab ? `<i class="cur-dot" title="Đang xem ${esc(label(tab))}" style="--c:${kindInfo(groups.get(tab)[0]).color}"></i>` : ''}${folded && bad ? '<i class="bad-dot"></i>' : ''}<span class="n">${total}</span></button>
+      <span>${esc(name)}</span>
+      ${folded && holdsTab ? `<i class="cur-dot" title="Đang xem ${esc(label(tab))}" style="--c:${kindInfo(groups.get(tab)[0]).color}"></i>` : ''}${folded && bad ? '<i class="bad-dot"></i>' : ''}<span class="n">${total}</span><svg class="i caret" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
       ${folded ? '' : `<div class="gv-ni">${list.map(item).join('')}</div>`}</section>`;
   }).join('') || '<p class="muted gv-nav-empty">Không có loại nào.</p>';
   $('gvNav').classList.toggle('mini', gv.mini);
