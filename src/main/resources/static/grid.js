@@ -205,14 +205,16 @@ function setGrid(open) {
   $('filterbar').hidden = open;
   $('gridBtn').classList.toggle('on', open);
   $('gridBtn').setAttribute('aria-pressed', String(open));
+  $('gridBtn').title = open ? 'Đang xem bảng — bấm để xem đồ thị (1)' : 'Xem bảng (2)';
   const u = new URL(location);
-  if (open) u.searchParams.set('view', 'grid'); else if (u.searchParams.get('view') === 'grid') u.searchParams.delete('view');
+  // the grid is the default, so the graph gets the explicit ?view=graph (a reload keeps what the user was looking at)
+  if (open) u.searchParams.delete('view'); else if (!u.searchParams.get('view')) u.searchParams.set('view', 'graph');
   history.replaceState(null, '', u);
   if (open) { gv.followSel = true; renderGrid(); $('gvWrap').focus(); }
 }
 VIEWS.grid = setGrid;
 
-$('gridBtn').onclick = () => setGrid(!gv.open);
+$('gridBtn').onclick = () => (gv.open ? showGraph() : setGrid(true));
 $('grid').addEventListener('click', e => {
   const tab = e.target.closest('[data-gtab]');
   if (tab) { gridKind(tab.dataset.gtab); return; }
@@ -242,4 +244,8 @@ $('gvSize').addEventListener('change', e => { gv.size = +e.target.value; store.s
 const _render = render;
 render = function (fit) { _render(fit); renderGrid(); };
 $('q').addEventListener('input', () => { gv.page = 0; renderGrid(); });
-if (new URLSearchParams(location.search).get('view') === 'grid') setGrid(true);
+/* the grid is the default view: open it unless the URL asks for another one (?view=graph, ?view=helm…) */
+{
+  const v = new URLSearchParams(location.search).get('view');
+  if (!v || v === 'grid') setGrid(true);
+}

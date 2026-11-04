@@ -8,6 +8,8 @@
 /* full-canvas views (timeline, helm, security…): opening one closes the others */
 const VIEWS = {};
 function closeOtherViews(name) { for (const [k, set] of Object.entries(VIEWS)) if (k !== name) set(false); }
+/* closing a view returns to the default one, the grid (the graph is opened explicitly: "1", ":graph", ?view=graph) */
+function backToDefault() { if (VIEWS.grid) VIEWS.grid(true); }
 
 const tl = { open: false, range: +(store.get('tl.range') || 3600), type: store.get('tl.type') || 'all', q: '', data: null, timer: null, now: 0 };
 const TL_RANGES = [[900, '15 phút'], [3600, '1 giờ'], [10800, '3 giờ'], [0, 'Tất cả']];
@@ -152,8 +154,8 @@ function setTimeline(open) {
 }
 
 VIEWS.timeline = setTimeline;
-$('tlBtn').onclick = () => setTimeline(!tl.open);
-$('tlClose').onclick = () => setTimeline(false);
+$('tlBtn').onclick = () => (tl.open ? backToDefault() : setTimeline(true));
+$('tlClose').onclick = () => backToDefault();
 $('timeline').addEventListener('click', e => {
   if (e.target.closest('#tlNodeOff')) { document.querySelector('#nodebar .nb.active')?.click(); return; }
   const rb = e.target.closest('[data-range]');

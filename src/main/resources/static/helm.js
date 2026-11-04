@@ -190,8 +190,8 @@ function setHelm(open) {
 }
 
 VIEWS.helm = setHelm;
-$('helmBtn').onclick = () => setHelm(!hm.open);
-$('hmClose').onclick = () => setHelm(false);
+$('helmBtn').onclick = () => (hm.open ? backToDefault() : setHelm(true));
+$('hmClose').onclick = () => backToDefault();
 $('hmQ').addEventListener('input', e => { hm.q = e.target.value.trim(); renderHelmList(); });
 $('helm').addEventListener('click', async e => {
   const it = e.target.closest('.hm-item');

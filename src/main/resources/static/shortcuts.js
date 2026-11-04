@@ -35,7 +35,8 @@ function runCmd(raw) {
   const [cmd, ...args] = raw.trim().split(/\s+/);
   const c = (cmd || '').toLowerCase();
   if (!c) return;
-  if (c === 'q' || c === 'graph') { closeOtherViews(''); return; }
+  if (c === 'graph') { showGraph(); return; }
+  if (c === 'q') { backToDefault(); return; }
   if (c === 'ctx') { $('ctx').click(); return; }
   if (c === 'ns') {
     const ns = !args[0] || args[0] === 'all' ? '*' : args[0];
@@ -66,6 +67,12 @@ $('cmdIn').addEventListener('keydown', e => {
 $('cmdIn').addEventListener('input', () => { const s = cmdSuggest($('cmdIn').value); $('cmdHint').textContent = s.length ? s.join('  ') : ''; });
 $('cmdIn').addEventListener('blur', () => setTimeout(() => { if (document.activeElement !== $('cmdIn')) $('cmdbar').hidden = true; }, 100));
 
+/* the graph: close every view (the grid included) and remember it in the URL so a reload stays on it */
+function showGraph() {
+  closeOtherViews('');
+  const u = new URL(location); u.searchParams.set('view', 'graph'); history.replaceState(null, '', u);
+}
+
 function showKeys() {
   const k = (keys, what) => `<tr><td>${keys.map(x => `<kbd>${esc(x)}</kbd>`).join(' ')}</td><td>${what}</td></tr>`;
   openModal(`<div class="m-head"><h3>Phím tắt</h3><button class="icon-btn sm" data-close aria-label="Đóng"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
@@ -84,7 +91,7 @@ document.addEventListener('keydown', e => {
   const typing = ['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement?.tagName) || document.activeElement?.isContentEditable
     || document.activeElement?.closest?.('.CodeMirror, .xterm');
   if (typing || e.ctrlKey || e.metaKey || e.altKey || !$('modal').hidden) return;
-  const views = { 1: () => closeOtherViews(''), 2: () => setGrid(true), 3: () => VIEWS.timeline(true), 4: () => VIEWS.helm(true), 5: () => VIEWS.security(true) };
+  const views = { 1: () => showGraph(), 2: () => setGrid(true), 3: () => VIEWS.timeline(true), 4: () => VIEWS.helm(true), 5: () => VIEWS.security(true) };
   if (e.key === ':') { e.preventDefault(); openCmd(); return; }
   if (e.key === '?') { e.preventDefault(); showKeys(); return; }
   if (views[e.key]) { e.preventDefault(); views[e.key](); return; }

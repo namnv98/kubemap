@@ -149,8 +149,8 @@ function setSecurity(open) {
 }
 VIEWS.security = setSecurity;
 
-$('secBtn').onclick = () => setSecurity(!secv.open);
-$('secClose').onclick = () => setSecurity(false);
+$('secBtn').onclick = () => (secv.open ? backToDefault() : setSecurity(true));
+$('secClose').onclick = () => backToDefault();
 $('secQ').addEventListener('input', e => { secv.q = e.target.value.trim(); renderSecurity(); });
 $('security').addEventListener('click', e => {
   const t = e.target.closest('[data-stab]');
