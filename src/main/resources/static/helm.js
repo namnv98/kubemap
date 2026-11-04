@@ -14,7 +14,7 @@ $('helm').innerHTML = `
       <input id="hmQ" type="search" placeholder="Lọc theo tên, chart…" autocomplete="off" aria-label="Lọc release"></div>
     <span class="tl-sum" id="hmSum"></span>
     <div class="spacer"></div>
-    <span class="hm-ro" title="Chỉ xem: rollback / uninstall chưa hỗ trợ">chỉ xem</span>
+    <span class="hm-ro" id="hmRo"></span>
     <button class="icon-btn sm" id="hmClose" title="Đóng (về đồ thị)" aria-label="Đóng Helm"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
   </div>
   <div class="hm-body">
@@ -73,9 +73,10 @@ function renderHelmDetail() {
       }).join('')}</div>`;
     },
     history: () => `<div class="hm-vbar"><button class="btn sm" id="hmCompare" ${d.history.length < 2 ? 'disabled' : ''}>So sánh revision…</button></div>
-      <table class="tbl hm-hist"><thead><tr><th>Rev</th><th>Trạng thái</th><th>Chart</th><th>App</th><th>Cập nhật</th><th>Mô tả</th></tr></thead><tbody>
+      <table class="tbl hm-hist"><thead><tr><th>Rev</th><th>Trạng thái</th><th>Chart</th><th>App</th><th>Cập nhật</th><th>Mô tả</th><th></th></tr></thead><tbody>
       ${d.history.map(h => `<tr><td>${h.revision}</td><td>${statusPill(h.status)}</td><td>${esc(h.chart)}-${esc(h.chartVersion)}</td><td>${esc(h.appVersion)}</td>
-        <td title="${esc(h.updated)}">${hmAgo(h.updated)} trước</td><td class="desc">${esc(h.description)}</td></tr>`).join('')}</tbody></table>`,
+        <td title="${esc(h.updated)}">${hmAgo(h.updated)} trước</td><td class="desc">${esc(h.description)}</td>
+        <td>${hm.canWrite && h.revision !== s.revision ? `<button class="btn sm" data-rollback="${h.revision}">Rollback về rev ${h.revision}</button>` : ''}</td></tr>`).join('')}</tbody></table>`,
     values: () => `<div class="hm-vbar">
         <div class="seg"><button data-vall="0" class="${hm.valuesAll ? '' : 'on'}">Values người dùng</button><button data-vall="1" class="${hm.valuesAll ? 'on' : ''}">Toàn bộ (gộp mặc định của chart)</button></div>
         <select id="hmRev" aria-label="Revision">${d.history.map(h => `<option value="${h.revision}">rev ${h.revision}</option>`).join('')}</select>
@@ -94,6 +95,7 @@ function renderHelmDetail() {
       <span class="hm-logo big">${HELM_ICON()}</span>
       <div style="min-width:0"><div class="kind">Helm release · ${esc(s.namespace)}</div><h2>${esc(s.name)}</h2></div>
       ${statusPill(s.status)}
+      ${hm.canWrite ? `<button class="btn sm danger-outline" id="hmUninstall">Uninstall</button>` : ''}
     </header>
     <div class="hm-facts">
       <span><i>Chart</i>${esc(s.chart)}-${esc(s.chartVersion)}</span>${s.appVersion ? `<span><i>App</i>${esc(s.appVersion)}</span>` : ''}
@@ -143,6 +145,36 @@ async function loadValues() {
   renderHelmDetail();
 }
 
+/* rollback / uninstall go through the helm CLI on the server (write-guarded, audited) */
+async function helmAvailability() {
+  if (hm.cli !== undefined) return;
+  try { hm.cli = await (await fetch('/api/actions/helm/available')).json(); } catch { hm.cli = { available: false }; }
+  hm.canWrite = state.writeEnabled && hm.cli.available;
+  $('hmRo').textContent = !state.writeEnabled ? 'chỉ xem (writes tắt)' : hm.cli.available ? 'helm ' + hm.cli.version : 'chỉ xem: không tìm thấy helm CLI';
+  $('hmRo').title = hm.cli.error || '';
+  renderHelmDetail();
+}
+
+async function helmRollback(rev) {
+  const s = hm.detail.summary;
+  const ok = await confirmAction({ title: `Rollback ${s.name} về revision ${rev}`, ns: s.namespace, confirmLabel: `Rollback → rev ${rev}`,
+    body: `<div class="diff"><span class="old">rev ${s.revision}</span> → <span class="new">rev ${rev}</span></div>
+      <p>Chạy <code>helm rollback ${esc(s.name)} ${rev} -n ${esc(s.namespace)}</code>: Helm tạo revision mới (${s.revision + 1}) với manifest và values của rev ${rev}, chạy cả hook của chart.</p>` });
+  if (!ok) return;
+  try { const r = await api('POST', 'helm/rollback', { namespace: s.namespace, name: s.name, revision: rev }); toast(r.message); loadHelmDetail(true); }
+  catch (e) { toast(e.message, 'err'); }
+}
+
+async function helmUninstall() {
+  const s = hm.detail.summary;
+  const res = await confirmAction({ title: `Uninstall Helm release ${s.name}`, ns: s.namespace, confirmLabel: 'Uninstall', danger: true, requireText: s.name,
+    body: `<p>Chạy <code>helm uninstall ${esc(s.name)} -n ${esc(s.namespace)}</code>: xoá <b>${hm.detail.resources.length}</b> tài nguyên của release (trừ những gì chart đánh dấu giữ lại, ví dụ CRD hay PVC có <code>helm.sh/resource-policy: keep</code>).</p>
+      <label class="restart"><input type="checkbox" name="keepHistory"> Giữ lịch sử (<code>--keep-history</code>) để còn rollback được</label>` });
+  if (!res) return;
+  try { const r = await api('POST', 'helm/uninstall', { namespace: s.namespace, name: s.name, keepHistory: !!res.keepHistory }); toast(r.message); hm.sel = null; hm.detail = null; loadHelm(); }
+  catch (e) { toast(e.message, 'err'); }
+}
+
 function setHelm(open) {
   hm.open = open;
   if (open) closeOtherViews('helm');
@@ -153,7 +185,7 @@ function setHelm(open) {
   if (open) u.searchParams.set('view', 'helm'); else if (u.searchParams.get('view') === 'helm') u.searchParams.delete('view');
   history.replaceState(null, '', u);
   clearInterval(hm.timer);
-  if (open) { loadHelm(); hm.timer = setInterval(loadHelm, 10000); }
+  if (open) { helmAvailability(); loadHelm(); hm.timer = setInterval(loadHelm, 10000); }
 }
 
 VIEWS.helm = setHelm;
@@ -166,6 +198,9 @@ $('helm').addEventListener('click', async e => {
   const t = e.target.closest('[data-htab]');
   if (t) { hm.tab = t.dataset.htab; store.set('helm.tab', hm.tab); renderHelmDetail(); return; }
   if (e.target.closest('#hmShowValues')) { loadValues(); return; }
+  const rb = e.target.closest('[data-rollback]');
+  if (rb) { helmRollback(+rb.dataset.rollback); return; }
+  if (e.target.closest('#hmUninstall')) { helmUninstall(); return; }
   if (e.target.closest('#hmCompare')) { compareHelmRevisions(hm.detail.summary.namespace, hm.detail.summary.name, hm.detail.history); return; }
   const va = e.target.closest('[data-vall]');
   if (va) { hm.valuesAll = va.dataset.vall === '1'; if (hm.values != null) loadValues(); else renderHelmDetail(); return; }
