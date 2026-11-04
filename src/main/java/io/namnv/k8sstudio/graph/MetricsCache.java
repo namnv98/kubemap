@@ -83,6 +83,7 @@ public class MetricsCache {
             for (NodeMetrics nm : client.top().nodes().metrics().getItems()) n.put(nm.getMetadata().getName(), usage(nm.getUsage()));
             long now = System.currentTimeMillis();
             p.forEach((k, u) -> record("pod:" + k, now, u));
+            c.forEach((k, per) -> per.forEach((ctr, u) -> record("ctr:" + k + "/" + ctr, now, u)));
             n.forEach((k, u) -> record("node:" + k, now, u));
             history.entrySet().removeIf(e -> e.getValue().isEmpty() || e.getValue().peekLast()[0] < now - HISTORY_MS);
             boolean changed = !p.equals(pods) || !n.equals(nodes);

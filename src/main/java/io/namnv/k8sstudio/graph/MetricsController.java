@@ -39,9 +39,23 @@ public class MetricsController {
                 samples = metrics.sum(keys);
             }
         }
+        Map<String, Object> out = new LinkedHashMap<>(series(samples));
+        out.put("available", metrics.available());
+        out.put("now", System.currentTimeMillis());
+        if (kind.equals("Pod")) { // per container, for pods with sidecars / several containers
+            Map<String, Object> per = new TreeMap<>();
+            cache.pod(namespace, name).ifPresent(p -> {
+                for (var c : p.getSpec().getContainers()) per.put(c.getName(), series(metrics.history("ctr:" + namespace + "/" + name + "/" + c.getName())));
+            });
+            out.put("containers", per);
+        }
+        return out;
+    }
+
+    private static Map<String, Object> series(List<long[]> samples) {
         List<Long> t = new ArrayList<>(), cpu = new ArrayList<>(), mem = new ArrayList<>();
         for (long[] s : samples) { t.add(s[0]); cpu.add(s[1]); mem.add(s[2]); }
-        return Map.of("available", metrics.available(), "t", t, "cpuMilli", cpu, "memBytes", mem, "now", System.currentTimeMillis());
+        return Map.of("t", t, "cpuMilli", cpu, "memBytes", mem);
     }
 
     private static boolean owned(HasMetadata o, Set<String> uids) {

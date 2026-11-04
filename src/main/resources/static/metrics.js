@@ -14,10 +14,11 @@ function mxBlock(n) {
   if (!d) return '';
   if (!d.available && !d.t.length) return '';
   if (d.t.length < 2) return block('Sử dụng tài nguyên (1 giờ)', null, `<p class="muted small">Đang thu thập số liệu (mỗi 15 giây một mẫu)…</p>`);
-  return block('Sử dụng tài nguyên', null, `<div class="mx">
-    ${mxChart('CPU', d.t, d.cpuMilli, v => (v >= 1000 ? (v / 1000).toFixed(2) : v + 'm'), d.now)}
-    ${mxChart('Memory', d.t, d.memBytes, v => (v >= 1 << 30 ? (v / (1 << 30)).toFixed(1) + 'Gi' : Math.round(v / (1 << 20)) + 'Mi'), d.now)}
-  </div>`);
+  const cpuF = v => (v >= 1000 ? (v / 1000).toFixed(2) : v + 'm'), memF = v => (v >= 1 << 30 ? (v / (1 << 30)).toFixed(1) + 'Gi' : Math.round(v / (1 << 20)) + 'Mi');
+  const per = Object.entries(d.containers || {}).filter(([, s]) => s.t.length >= 2);
+  return block('Sử dụng tài nguyên', null, `<div class="mx">${mxChart('CPU', d.t, d.cpuMilli, cpuF, d.now)}${mxChart('Memory', d.t, d.memBytes, memF, d.now)}</div>`)
+    + (per.length > 1 ? block('Theo container', per.length, per.map(([name, s]) => `<div class="mx-ctr"><div class="mx-n">${esc(name)}</div>
+        <div class="mx">${mxChart('CPU', s.t, s.cpuMilli, cpuF, d.now)}${mxChart('Memory', s.t, s.memBytes, memF, d.now)}</div></div>`).join('')) : '');
 }
 
 function mxChart(label, t, v, fmt, now) {

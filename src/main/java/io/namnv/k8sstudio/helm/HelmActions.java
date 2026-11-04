@@ -40,6 +40,8 @@ public class HelmActions {
 
     public record RollbackRequest(String namespace, String name, int revision) {}
     public record UninstallRequest(String namespace, String name, boolean keepHistory) {}
+    public record RepoRequest(String name, String url) {}
+    public record InstallRequest(String namespace, String name, String chart, String version, String values, boolean createNamespace, boolean dryRun) {}
 
     @GetMapping("/available")
     public Map<String, Object> available() {
@@ -80,6 +82,93 @@ public class HelmActions {
             audit.record(cache.context(), "helm-uninstall", target, null, e);
             throw e;
         }
+    }
+
+    // ------------------------------------------------------------------ repositories & charts (helm's own repo config)
+
+    @GetMapping("/repos")
+    public Object repos() {
+        try { return parseJson(run(List.of(helmBinary, "repo", "list", "-o", "json"), 30)); }
+        catch (HelmException e) { if (String.valueOf(e.getMessage()).contains("no repositories")) return List.of(); throw e; }
+    }
+
+    @PostMapping("/repo/add")
+    public Map<String, String> repoAdd(@RequestBody RepoRequest r) {
+        if (r.name() == null || !r.name().matches("[a-z0-9][a-z0-9_-]{0,62}")) throw new HelmException(400, "Tên repo không hợp lệ");
+        if (r.url() == null || !r.url().matches("(https?|oci)://[^\\s]+")) throw new HelmException(400, "URL phải bắt đầu bằng https://, http:// hoặc oci://");
+        String out = run(List.of(helmBinary, "repo", "add", r.name(), r.url()), 120);
+        audit.record(cache.context(), "helm-repo-add", r.name(), r.url(), null);
+        return Map.of("message", "Đã thêm repo " + r.name(), "output", out.strip());
+    }
+
+    @PostMapping("/repo/update")
+    public Map<String, String> repoUpdate() {
+        return Map.of("message", "Đã cập nhật index các repo", "output", run(List.of(helmBinary, "repo", "update"), 300).strip());
+    }
+
+    @PostMapping("/repo/remove")
+    public Map<String, String> repoRemove(@RequestBody RepoRequest r) {
+        if (r.name() == null || !r.name().matches("[a-z0-9][a-z0-9_-]{0,62}")) throw new HelmException(400, "Tên repo không hợp lệ");
+        String out = run(List.of(helmBinary, "repo", "remove", r.name()), 30);
+        audit.record(cache.context(), "helm-repo-remove", r.name(), null, null);
+        return Map.of("message", "Đã xoá repo " + r.name(), "output", out.strip());
+    }
+
+    @GetMapping("/search")
+    public Object search(@RequestParam(defaultValue = "") String q) {
+        if (!q.matches("[A-Za-z0-9._/ -]{0,100}") || q.startsWith("-")) throw new HelmException(400, "Từ khoá không hợp lệ");
+        List<String> c = new ArrayList<>(List.of(helmBinary, "search", "repo"));
+        if (!q.isBlank()) c.add(q.strip());
+        c.addAll(List.of("-o", "json"));
+        return parseJson(run(c, 60));
+    }
+
+    @GetMapping("/chart/values")
+    public Map<String, String> chartValues(@RequestParam String chart, @RequestParam(defaultValue = "") String version) {
+        validChart(chart, version);
+        List<String> c = new ArrayList<>(List.of(helmBinary, "show", "values", chart));
+        if (!version.isBlank()) { c.add("--version"); c.add(version); }
+        return Map.of("yaml", run(c, 120));
+    }
+
+    /** helm install … -f <values>; dryRun=true renders and validates against the API server without installing */
+    @PostMapping("/install")
+    public Map<String, String> install(@RequestBody InstallRequest r) {
+        validName(r.name()); validName(r.namespace()); validChart(r.chart(), r.version());
+        Path values = null;
+        try {
+            List<String> c = cmd("install", r.name(), r.chart(), "-n", r.namespace());
+            if (r.version() != null && !r.version().isBlank()) { c.add("--version"); c.add(r.version()); }
+            if (r.createNamespace()) c.add("--create-namespace");
+            if (r.dryRun()) c.add("--dry-run=server");
+            if (r.values() != null && !r.values().isBlank()) {
+                values = Files.createTempFile("k8s-studio-values", ".yaml");
+                Files.writeString(values, r.values(), StandardCharsets.UTF_8);
+                c.add("-f"); c.add(values.toString());
+            }
+            String target = "Helm release " + r.namespace() + "/" + r.name();
+            try {
+                String out = run(c, 600);
+                if (!r.dryRun()) audit.record(cache.context(), "helm-install", target, r.chart() + (r.version() == null || r.version().isBlank() ? "" : "@" + r.version()), null);
+                return Map.of("message", r.dryRun() ? "Dry-run hợp lệ" : "Đã cài " + r.name(), "output", out.strip());
+            } catch (RuntimeException e) {
+                if (!r.dryRun()) audit.record(cache.context(), "helm-install", target, r.chart(), e);
+                throw e;
+            }
+        } catch (IOException e) {
+            throw new HelmException(500, "Không ghi được file values: " + e.getMessage());
+        } finally {
+            if (values != null) try { Files.deleteIfExists(values); } catch (IOException ignored) {}
+        }
+    }
+
+    private static void validChart(String chart, String version) {
+        if (chart == null || chart.startsWith("-") || !chart.matches("(oci://)?[A-Za-z0-9._/:-]{1,200}")) throw new HelmException(400, "Tên chart không hợp lệ");
+        if (version != null && !version.isBlank() && !version.matches("[A-Za-z0-9.+_~^<>=*-]{1,60}")) throw new HelmException(400, "Version không hợp lệ");
+    }
+
+    private Object parseJson(String json) {
+        return cache.client().getKubernetesSerialization().unmarshal(json.isBlank() ? "[]" : json, Object.class);
     }
 
     /** helm <args> --kubeconfig <file in use> --kube-context <context in use> */

@@ -152,6 +152,7 @@ async function helmAvailability() {
   hm.canWrite = state.writeEnabled && hm.cli.available;
   $('hmRo').textContent = !state.writeEnabled ? 'chỉ xem (writes tắt)' : hm.cli.available ? 'helm ' + hm.cli.version : 'chỉ xem: không tìm thấy helm CLI';
   $('hmRo').title = hm.cli.error || '';
+  if (hm.canWrite && typeof helmToolbar === 'function') helmToolbar(); // Repo / Cài chart (helm-install.js)
   renderHelmDetail();
 }
 

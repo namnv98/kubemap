@@ -793,6 +793,49 @@
   .mx-c .l { fill: none; stroke: var(--accent); stroke-width: 1.6; }
   .mx-x { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--faint); }
   @media (max-width: 720px) { .mx { grid-template-columns: 1fr; } }
+  /* ---------- grid view, command bar ---------- */
+  .gv-wrap { flex: 1; min-height: 0; overflow: auto; padding: 0 14px; outline: none; }
+  .gv-tbl { font-size: 12.5px; }
+  .gv-tbl thead th { position: sticky; top: 0; background: var(--bg); padding: 10px 8px 8px 0; cursor: pointer; user-select: none; white-space: nowrap; z-index: 1; border-bottom: 1px solid var(--border); }
+  .gv-tbl thead th:hover, .gv-tbl thead th.on { color: var(--text); }
+  .gv-tbl td { padding: 6px 8px 6px 0; vertical-align: middle; }
+  .gv-tbl tbody tr { cursor: pointer; } .gv-tbl tbody tr:hover td { background: var(--surface-2); }
+  .gv-tbl tr.cur td { background: var(--accent-soft); } .gv-tbl tr.cur td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
+  .gv-tbl tr.sel td { font-weight: 600; }
+  .gv-tbl .hd { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--c); margin-left: 6px; }
+  .gv-tbl .kd { white-space: nowrap; color: var(--muted); } .gv-tbl .kd .k { color: var(--c); display: inline-flex; vertical-align: -2px; margin-right: 6px; } .gv-tbl .kd svg { width: 14px; height: 14px; }
+  .gv-tbl .nm { overflow-wrap: anywhere; } .gv-tbl .st { color: var(--c); font-weight: 600; } .gv-tbl .num { font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--muted); }
+  .gv-tbl .bad { color: var(--error); font-size: 11px; }
+  .gv-foot { padding: 8px 14px; border-top: 1px solid var(--border); font-size: 12px; color: var(--faint); background: var(--surface); }
+  kbd { font: 11px ui-monospace, monospace; border: 1px solid var(--border); border-radius: 4px; padding: 0 4px; color: var(--muted); background: var(--surface-2); }
+  .cmdbar { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); z-index: 9; width: min(640px, calc(100% - 32px)); display: flex; align-items: center; gap: 8px;
+    padding: 0 12px; height: 40px; border-radius: 10px; background: var(--surface); border: 1px solid var(--accent); box-shadow: var(--shadow); }
+  .cmdbar[hidden] { display: none; }
+  .cb-p { font: 700 16px ui-monospace, monospace; color: var(--accent); }
+  .cmdbar input { flex: 1; min-width: 0; border: 0; background: none; color: var(--text); font: 13px ui-monospace, monospace; outline: none; }
+  .cb-hint { font: 11.5px ui-monospace, monospace; color: var(--faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 40%; }
+  .keys-tbl td:first-child { white-space: nowrap; width: 110px; }
+  .mx-ctr + .mx-ctr { margin-top: 10px; } .mx-n { font: 600 12px ui-monospace, monospace; margin-bottom: 6px; color: var(--muted); }
+  /* ---------- helm repos / install ---------- */
+  .hr-add { display: flex; gap: 8px; margin: 14px 0 8px; flex-wrap: wrap; }
+  .hr-add input, .hi-search input, .hi-row input { height: 30px; padding: 0 8px; border-radius: 7px; border: 1px solid var(--border-strong); background: var(--surface-2); color: var(--text); font: 12.5px ui-monospace, monospace; min-width: 0; }
+  .hr-add input:first-child { width: 160px; } .hr-add input:nth-child(2) { flex: 1; }
+  .m-body.hi { display: flex; flex-direction: column; gap: 12px; min-height: 0; flex: 1; }
+  .hi-search { display: flex; gap: 8px; } .hi-search input { flex: 1; }
+  .hi-results { display: flex; flex-direction: column; gap: 4px; max-height: 200px; overflow: auto; flex: none; }
+  .hi-item { display: grid; grid-template-columns: minmax(160px, 260px) 160px 1fr; gap: 10px; align-items: baseline; text-align: left; padding: 6px 8px; border-radius: 7px;
+    border: 1px solid transparent; background: none; color: var(--text); font: inherit; font-size: 12.5px; cursor: pointer; }
+  .hi-item:hover { background: var(--surface-2); } .hi-item.on { background: var(--accent-soft); border-color: var(--accent); }
+  .hi-item span { color: var(--muted); } .hi-item small { color: var(--faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .hi-form { display: flex; flex-direction: column; gap: 10px; min-height: 0; flex: 1; }
+  .hi-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: end; }
+  .hi-row label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
+  .hi-row label.ck { flex-direction: row; align-items: center; gap: 6px; height: 30px; }
+  .hi-vh { display: flex; gap: 8px; align-items: baseline; font-size: 12.5px; } .hi-vh .muted { color: var(--faint); font-size: 11.5px; }
+  .hi-values { flex: 1; min-height: 200px; border: 1px solid var(--border); border-radius: 9px; overflow: hidden; }
+  .hi-values .CodeMirror { height: 100%; min-height: 200px; font-size: 12px; }
+  .hi-out { max-height: 160px; flex: none; }
+  .bad { color: var(--error); }
 </style>
 </head>
 <body>
@@ -820,6 +863,7 @@
   </div>
   <button class="chip pf-chip" id="pfChip" hidden title="Port-forward đang mở"><svg class="i" viewBox="0 0 24 24"><path d="M4 8h13l-3-3M20 16H7l3 3"/></svg><b>0</b> forward</button>
   <span class="live" id="live"><span class="dot"></span><span class="txt">Đang kết nối…</span></span>
+  <button class="icon-btn" id="gridBtn" title="Bảng tài nguyên (2)" aria-pressed="false"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M3 15h18M9 4v16"/></svg></button>
   <button class="icon-btn" id="secBtn" title="Bảo mật: cấu hình, lối vào, RBAC" aria-pressed="false"><svg class="i" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg></button>
   <button class="icon-btn" id="helmBtn" title="Helm releases" aria-pressed="false"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><circle cx="12" cy="12" r="8"/><path d="M12 1.5v4M12 18.5v4M1.5 12h4M18.5 12h4M4.6 4.6l2.8 2.8M16.6 16.6l2.8 2.8M4.6 19.4l2.8-2.8M16.6 7.4l2.8-2.8"/></svg></button>
   <button class="icon-btn" id="tlBtn" title="Events timeline" aria-pressed="false"><svg class="i" viewBox="0 0 24 24"><path d="M3 12h4l3-7 4 14 3-7h4"/></svg></button>
@@ -870,6 +914,8 @@
     <div class="timeline" id="timeline" hidden></div>
     <div class="timeline helm" id="helm" hidden></div>
     <div class="timeline" id="security" hidden></div>
+    <div class="timeline" id="grid" hidden></div>
+    <div class="cmdbar" id="cmdbar" hidden></div>
     <div class="logs" id="logs" hidden>
       <div class="logs-resize" id="logsResize" title="Kéo để đổi chiều cao"></div>
       <div class="logs-bar">
@@ -942,5 +988,8 @@
 <script src="security.js"></script>
 <script src="portforward.js"></script>
 <script src="metrics.js"></script>
+<script src="grid.js"></script>
+<script src="shortcuts.js"></script>
+<script src="helm-install.js"></script>
 </body>
 </html>
