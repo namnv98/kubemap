@@ -1,6 +1,7 @@
 'use strict';
 /*
- * Grid view: one table at a time — the kind picked in the tabs (remembered; ":po", ":svc"… switch it).
+ * Grid view: one table at a time — the kind picked in the left sidebar (kinds grouped, foldable, filterable; a select on
+ * narrow screens; remembered; ":po", ":svc"… switch it).
  * Each kind has its own columns. Toolbar: search inside the table (any column), page size, pagination; click a column
  * header to sort (default: newest first). Click / Enter opens the detail panel; j / k move the cursor within the page.
  * The graph's filter bar is hidden while the grid is open; the top-bar search and health chips still narrow the rows.
@@ -43,17 +44,38 @@ const GRID_ORDER = ['Ingress', 'Service', 'Deployment', 'StatefulSet', 'DaemonSe
   'ConfigMap', 'Secret', 'ServiceAccount', 'Role', 'RoleBinding', 'ClusterRole', 'ClusterRoleBinding', 'IngressClass', 'Node'];
 
 $('grid').innerHTML = `
-  <div class="gv-tabs" id="gvTabs" role="tablist" aria-label="Loại tài nguyên"></div>
-  <div class="gv-bar">
-    <div class="search sm"><svg class="i lead" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
-      <input id="gvQ" type="search" placeholder="Tìm trong bảng…" autocomplete="off" aria-label="Tìm trong bảng"></div>
-    <span class="gv-count" id="gvCount"></span>
-    <div class="spacer"></div>
-    <label class="gv-size">Mỗi trang <select id="gvSize" aria-label="Số dòng mỗi trang">${[25, 50, 100, 200].map(n => `<option value="${n}">${n}</option>`).join('')}</select></label>
-    <nav class="gv-pages" id="gvPages" aria-label="Phân trang"></nav>
-  </div>
-  <div class="gv-wrap" tabindex="0" id="gvWrap" aria-label="Bảng tài nguyên"></div>
-  <div class="gv-foot" id="gvFoot"><kbd>j</kbd>/<kbd>k</kbd> di chuyển · <kbd>Enter</kbd> mở · <kbd>d</kbd> describe · <kbd>y</kbd> YAML · <kbd>l</kbd> log · <kbd>[</kbd>/<kbd>]</kbd> trang trước/sau · <kbd>:</kbd> lệnh · <kbd>?</kbd> phím tắt</div>`;
+  <div class="gv-body">
+    <div class="gv-nav" role="navigation" aria-label="Loại tài nguyên">
+      <div class="gv-nav-q"><svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+        <input id="gvNavQ" type="search" placeholder="Lọc loại…" autocomplete="off" aria-label="Lọc loại"></div>
+      <div class="gv-nav-list" id="gvTabs" role="tablist" aria-orientation="vertical"></div>
+    </div>
+    <div class="gv-main">
+      <div class="gv-bar">
+        <select class="gv-kindsel" id="gvKindSel" aria-label="Loại tài nguyên"></select>
+        <div class="gv-title" id="gvTitle"></div>
+        <div class="search sm"><svg class="i lead" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+          <input id="gvQ" type="search" placeholder="Tìm trong bảng…" autocomplete="off" aria-label="Tìm trong bảng"></div>
+        <span class="gv-count" id="gvCount"></span>
+        <div class="spacer"></div>
+        <label class="gv-size">Mỗi trang <select id="gvSize" aria-label="Số dòng mỗi trang">${[25, 50, 100, 200].map(n => `<option value="${n}">${n}</option>`).join('')}</select></label>
+        <nav class="gv-pages" id="gvPages" aria-label="Phân trang"></nav>
+      </div>
+      <div class="gv-wrap" tabindex="0" id="gvWrap" aria-label="Bảng tài nguyên"></div>
+      <div class="gv-foot" id="gvFoot"><kbd>j</kbd>/<kbd>k</kbd> di chuyển · <kbd>Enter</kbd> mở · <kbd>d</kbd> describe · <kbd>y</kbd> YAML · <kbd>l</kbd> log · <kbd>[</kbd>/<kbd>]</kbd> trang · <kbd>:</kbd> lệnh · <kbd>?</kbd> phím tắt</div>
+    </div>
+  </div>`;
+/* sidebar groups (kinds not listed here fall into "Khác"; custom resources get their own group) */
+const GRID_GROUPS = [
+  ['Mạng', ['Ingress', 'Service', 'NetworkPolicy', 'IngressClass']],
+  ['Workload', ['Deployment', 'StatefulSet', 'DaemonSet', 'CronJob', 'Job', 'ReplicaSet', 'Pod', 'HorizontalPodAutoscaler', 'PodDisruptionBudget']],
+  ['Lưu trữ', ['PersistentVolumeClaim', 'PersistentVolume', 'StorageClass']],
+  ['Cấu hình', ['ConfigMap', 'Secret']],
+  ['Quyền', ['ServiceAccount', 'Role', 'RoleBinding', 'ClusterRole', 'ClusterRoleBinding']],
+  ['Cụm', ['Node']],
+];
+gv.navQ = '';
+gv.navFolded = new Set((() => { try { return JSON.parse(store.get('grid2.navFolded') || '[]'); } catch { return []; } })());
 $('gvSize').value = String(gv.size);
 
 const gkey = n => (n.group ? n.group + '/' + n.kind : n.kind); // custom kinds of different API groups stay apart
@@ -79,11 +101,32 @@ function renderGrid() {
   // the chosen kind (by section key, or by plain kind from ":po"); fall back to Pod / the first kind of the view
   let tab = groups.has(gv.kind) ? gv.kind : order.find(k => groups.get(k)[0].kind === gv.kind);
   if (!tab) tab = order.includes('Pod') ? 'Pod' : order[0];
-  $('gvTabs').innerHTML = order.map(k => {
+  const label = k => kindInfo(groups.get(k)[0]).label;
+  const item = k => {
     const n0 = groups.get(k)[0], bad = groups.get(k).filter(n => n.health === 'error').length;
     return `<button role="tab" data-gtab="${esc(k)}" class="${tab === k ? 'on' : ''}" aria-selected="${tab === k}" style="--c:${kindInfo(n0).color}"
-      title="${esc(kindInfo(n0).label)}${n0.group ? ' · ' + esc(n0.group) : ''}${bad ? ` · ${bad} lỗi` : ''}">${icon(iconKind(n0))}${esc(kindInfo(n0).label)}<span class="n">${groups.get(k).length}</span>${bad ? '<i class="bad"></i>' : ''}</button>`;
-  }).join('') || '<span class="muted">Không có tài nguyên nào.</span>';
+      title="${esc(label(k))}${n0.group ? ' · ' + esc(n0.group) : ''}${bad ? ` · ${bad} lỗi` : ''}">${icon(iconKind(n0))}<span class="l">${esc(label(k))}</span>${bad ? '<i class="bad"></i>' : ''}<span class="n">${groups.get(k).length}</span></button>`;
+  };
+  const nq = gv.navQ.toLowerCase();
+  const navGroups = GRID_GROUPS.map(([name, kinds]) => [name, order.filter(k => !groups.get(k)[0].group && kinds.includes(groups.get(k)[0].kind))]);
+  const known = new Set(GRID_GROUPS.flatMap(g => g[1]));
+  navGroups.push(['Khác', order.filter(k => !groups.get(k)[0].group && !known.has(groups.get(k)[0].kind))]);
+  navGroups.push(['Custom resources', order.filter(k => groups.get(k)[0].group)]);
+  $('gvTabs').innerHTML = navGroups.map(([name, ks]) => {
+    const list = ks.filter(k => !nq || label(k).toLowerCase().includes(nq) || k.toLowerCase().includes(nq));
+    if (!list.length) return '';
+    const folded = !nq && gv.navFolded.has(name) && !list.includes(tab);
+    const total = list.reduce((t, k) => t + groups.get(k).length, 0);
+    return `<section class="gv-ng ${folded ? 'folded' : ''}"><button class="gv-nh" data-navfold="${esc(name)}" aria-expanded="${!folded}">
+      <svg class="i caret" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg><span>${esc(name)}</span><span class="n">${total}</span></button>
+      ${folded ? '' : list.map(item).join('')}</section>`;
+  }).join('') || '<p class="muted gv-nav-empty">Không có loại nào.</p>';
+  $('gvKindSel').innerHTML = navGroups.filter(g => g[1].length).map(([name, ks]) => `<optgroup label="${esc(name)}">${ks.map(k =>
+    `<option value="${esc(k)}" ${tab === k ? 'selected' : ''}>${esc(label(k))} (${groups.get(k).length})</option>`).join('')}</optgroup>`).join('');
+  if (tab) {
+    const t0 = groups.get(tab)[0];
+    $('gvTitle').innerHTML = `<span class="k" style="--c:${kindInfo(t0).color}">${icon(iconKind(t0))}</span><b>${esc(label(tab))}</b>${t0.group ? `<span class="grp">${esc(t0.group)}</span>` : ''}`;
+  }
   if (!tab) { $('gvWrap').innerHTML = `<div class="tl-empty">Không có tài nguyên nào khớp bộ lọc.</div>`; $('gvPages').innerHTML = ''; $('gvCount').textContent = ''; gv.rows = []; return; }
 
   const n0 = groups.get(tab)[0];
@@ -104,8 +147,8 @@ function renderGrid() {
   const page = rows.slice(gv.page * gv.size, (gv.page + 1) * gv.size);
   gv.rows = page;
   $('gvCount').innerHTML = rows.length === groups.get(tab).length
-    ? `<b>${rows.length}</b> ${esc(kindInfo(n0).label)}`
-    : `<b>${rows.length}</b> / ${groups.get(tab).length} ${esc(kindInfo(n0).label)} khớp “${esc(gv.q)}”`;
+    ? `${rows.length} mục`
+    : `<b>${rows.length}</b> / ${groups.get(tab).length} khớp “${esc(gv.q)}”`;
 
   const sortIcon = c => (gv.sort === c ? `<svg class="i so" viewBox="0 0 24 24"><path d="${gv.dir > 0 ? 'M7 14l5-5 5 5' : 'M7 10l5 5 5-5'}"/></svg>` : '<svg class="i so idle" viewBox="0 0 24 24"><path d="M8 10l4-4 4 4M8 14l4 4 4-4"/></svg>');
   const th = (c, l, cls = '') => `<th data-sort="${c}" class="${cls} ${gv.sort === c ? 'on' : ''}" aria-sort="${gv.sort === c ? (gv.dir > 0 ? 'ascending' : 'descending') : 'none'}" title="Sắp xếp theo ${esc(l || 'tình trạng')}"><span>${l}${sortIcon(c)}</span></th>`;
@@ -173,6 +216,12 @@ $('gridBtn').onclick = () => setGrid(!gv.open);
 $('grid').addEventListener('click', e => {
   const tab = e.target.closest('[data-gtab]');
   if (tab) { gridKind(tab.dataset.gtab); return; }
+  const nf = e.target.closest('[data-navfold]');
+  if (nf) {
+    const g = nf.dataset.navfold;
+    gv.navFolded.has(g) ? gv.navFolded.delete(g) : gv.navFolded.add(g);
+    store.set('grid2.navFolded', JSON.stringify([...gv.navFolded])); renderGrid(); return;
+  }
   const pg = e.target.closest('[data-page]');
   if (pg && !pg.disabled) { gv.page = +pg.dataset.page; gv.cursor = 0; renderGrid(); return; }
   const th = e.target.closest('th[data-sort]');
@@ -186,6 +235,8 @@ $('grid').addEventListener('click', e => {
 });
 $('gvQ').addEventListener('input', e => { gv.q = e.target.value.trim(); gv.page = 0; gv.cursor = 0; renderGrid(); });
 $('gvQ').addEventListener('keydown', e => { if (e.key === 'Escape') { e.stopPropagation(); e.target.value = ''; gv.q = ''; renderGrid(); $('gvWrap').focus(); } if (e.key === 'Enter' || e.key === 'ArrowDown') { e.preventDefault(); $('gvWrap').focus(); } });
+$('gvNavQ').addEventListener('input', e => { gv.navQ = e.target.value.trim(); renderGrid(); });
+$('gvKindSel').addEventListener('change', e => gridKind(e.target.value));
 $('gvSize').addEventListener('change', e => { gv.size = +e.target.value; store.set('grid2.size', String(gv.size)); gv.page = 0; renderGrid(); });
 // re-render on every graph push / filter change while open
 const _render = render;
