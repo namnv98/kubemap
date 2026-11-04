@@ -3,7 +3,7 @@
  * Grid view: the objects of the current view as tables, one section per kind (in the graph's left-to-right order),
  * each with the columns that matter for that kind. Tabs on top switch to a single kind ("Tất cả" shows every section).
  * Click a column to sort (applies to every section), a section title to fold it; click / Enter opens the detail panel,
- * j / k move the cursor. Same kind chips, search and health filter as the graph.
+ * j / k move the cursor. The graph's filter bar is hidden here: the tabs are the grid's kind filter (search and health chips still apply).
  * Depends on app.js ($, esc, state, store, icon, iconKind, kindInfo, isVisible, isAll, age, H, showDetailRaw,
  * matchesQuery, render), nodes.js (shortNode) and VIEWS.
  */
@@ -53,9 +53,9 @@ const cellText = (n, k) => { const v = n.info?.[k]; return k === 'node' && v && 
 
 function gridRows() {
   const q = state.query.toLowerCase();
-  // a pinned kind (":po", a tab) is listed even when its chip is off in the filter bar
-  const pinned = n => gv.kind && (gkey(n) === gv.kind || n.kind === gv.kind);
-  return (state.graph?.nodes || []).filter(n => (isVisible(n) || pinned(n)) && matchesQuery(n, q) && (!state.health || n.health === state.health));
+  // no filter-bar chips here: every kind is listed (Node only when it runs pods of the view, like on the graph); tabs pick one
+  const listed = n => n.kind !== 'Node' || nodeCardWanted(n);
+  return (state.graph?.nodes || []).filter(n => listed(n) && matchesQuery(n, q) && (!state.health || n.health === state.health));
 }
 
 function sortKey(c) {
@@ -135,6 +135,8 @@ function setGrid(open) {
   gv.open = open;
   if (open) closeOtherViews('grid');
   $('grid').hidden = !open;
+  // the grid has its own kind tabs, so the graph's filter bar ("Hiển thị") is hidden while it is open
+  $('filterbar').hidden = open;
   $('gridBtn').classList.toggle('on', open);
   $('gridBtn').setAttribute('aria-pressed', String(open));
   const u = new URL(location);
