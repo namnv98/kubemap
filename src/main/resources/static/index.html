@@ -619,8 +619,9 @@
   @media (max-width: 720px) { .nodebar { padding: 6px 12px; } .nb-m { display: none; } }
   /* ---------- events timeline ---------- */
   .icon-btn.on { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
-  .timeline { position: absolute; inset: 0; z-index: 6; display: flex; flex-direction: column; background: var(--bg); min-width: 0; }
-  .timeline[hidden] { display: none; }
+  /* full-canvas views (timeline, helm, security, grid); not ".timeline", which is the events list in the detail panel */
+  .view { position: absolute; inset: 0; z-index: 6; display: flex; flex-direction: column; background: var(--bg); min-width: 0; }
+  .view[hidden] { display: none; }
   .tl-bar { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--border); background: var(--surface); flex-wrap: wrap; }
   .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--surface-2); }
   .seg button { height: 28px; padding: 0 10px; border: 0; background: none; color: var(--muted); font: inherit; font-size: 12.5px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
@@ -1165,10 +1166,10 @@
       <button class="btn" id="expandAll"><svg class="i" viewBox="0 0 24 24"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>Mở rộng tất cả</button>
       <button class="btn" id="collapseAll"><svg class="i" viewBox="0 0 24 24"><path d="M4 14h6v6M20 10h-6V4M14 10l7-7M3 21l7-7"/></svg>Thu gọn tất cả</button>
     </div>
-    <div class="timeline" id="timeline" hidden></div>
-    <div class="timeline helm" id="helm" hidden></div>
-    <div class="timeline" id="security" hidden></div>
-    <div class="timeline" id="grid" hidden></div>
+    <div class="view" id="timeline" hidden></div>
+    <div class="view helm" id="helm" hidden></div>
+    <div class="view" id="security" hidden></div>
+    <div class="view" id="grid" hidden></div>
     <div class="cmdbar" id="cmdbar" hidden></div>
     <div class="logs" id="logs" hidden>
       <div class="logs-resize" id="logsResize" title="Kéo để đổi chiều cao"></div>
