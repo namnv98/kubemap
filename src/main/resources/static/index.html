@@ -794,9 +794,27 @@
   .mx-x { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--faint); }
   @media (max-width: 720px) { .mx { grid-template-columns: 1fr; } }
   /* ---------- grid view, command bar ---------- */
-  .gv-wrap { flex: 1; min-height: 0; overflow: auto; padding: 0 14px; outline: none; }
+  .gv-wrap { flex: 1; min-height: 0; overflow: auto; padding: 6px 14px 14px; outline: none; display: flex; flex-direction: column; gap: 10px; }
+  .gv-tabs { display: flex; gap: 4px; padding: 10px 14px 8px; border-bottom: 1px solid var(--border); background: var(--surface); overflow-x: auto; scrollbar-width: thin; flex: none; }
+  .gv-tabs button { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: 7px; border: 1px solid transparent; background: none;
+    color: var(--muted); font: inherit; font-size: 12.5px; cursor: pointer; white-space: nowrap; flex: none; position: relative; }
+  .gv-tabs button svg { width: 14px; height: 14px; color: var(--c, var(--muted)); }
+  .gv-tabs button:hover { background: var(--surface-2); color: var(--text); }
+  .gv-tabs button.on { background: var(--accent-soft); border-color: color-mix(in srgb, var(--accent) 40%, transparent); color: var(--text); font-weight: 600; }
+  .gv-tabs .n { font-size: 11px; color: var(--faint); font-variant-numeric: tabular-nums; font-weight: 500; }
+  .gv-tabs .bad { width: 6px; height: 6px; border-radius: 50%; background: var(--error); position: absolute; top: 4px; right: 3px; }
+  .gv-sec { border: 1px solid var(--border); border-radius: 10px; background: var(--surface); flex: none; }
+  .gv-sh { display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 12px; border: 0; background: none; color: var(--text); font: inherit; font-size: 13px; cursor: pointer; text-align: left; border-radius: 10px 10px 0 0; }
+  .gv-sh:hover:not(:disabled) { background: var(--surface-2); } .gv-sh:disabled { cursor: default; }
+  .gv-sh svg { width: 15px; height: 15px; color: var(--c); } .gv-sh .caret { color: var(--muted); transition: transform .15s; }
+  .gv-sec.folded .gv-sh .caret { transform: rotate(-90deg); } .gv-sh:disabled .caret { display: none; }
+  .gv-sh .n { color: var(--faint); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .gv-sh .gc { font-size: 11px; font-weight: 600; padding: 1px 6px; border-radius: 5px; } .gv-sh .gc.e { color: var(--error); background: color-mix(in srgb, var(--error) 12%, transparent); }
+  .gv-sh .gc.w { color: var(--warn); background: color-mix(in srgb, var(--warn) 12%, transparent); } .gv-sh .grp { margin-left: auto; color: var(--faint); font-size: 11.5px; }
+  .gv-sec .gv-tbl { border-top: 1px solid var(--border); }
+  .gv-tbl th.hc, .gv-tbl td.hc { width: 22px; } .gv-tbl td.img { max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .gv-tbl { font-size: 12.5px; }
-  .gv-tbl thead th { position: sticky; top: 0; background: var(--bg); padding: 10px 8px 8px 0; cursor: pointer; user-select: none; white-space: nowrap; z-index: 1; border-bottom: 1px solid var(--border); }
+  .gv-tbl thead th { background: var(--surface); padding: 8px 8px 6px 0; font-size: 11.5px; cursor: pointer; user-select: none; white-space: nowrap; z-index: 1; border-bottom: 1px solid var(--border); }
   .gv-tbl thead th:hover, .gv-tbl thead th.on { color: var(--text); }
   .gv-tbl td { padding: 6px 8px 6px 0; vertical-align: middle; }
   .gv-tbl tbody tr { cursor: pointer; } .gv-tbl tbody tr:hover td { background: var(--surface-2); }
@@ -806,6 +824,7 @@
   .gv-tbl .kd { white-space: nowrap; color: var(--muted); } .gv-tbl .kd .k { color: var(--c); display: inline-flex; vertical-align: -2px; margin-right: 6px; } .gv-tbl .kd svg { width: 14px; height: 14px; }
   .gv-tbl .nm { overflow-wrap: anywhere; } .gv-tbl .st { color: var(--c); font-weight: 600; } .gv-tbl .num { font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--muted); }
   .gv-tbl .bad { color: var(--error); font-size: 11px; }
+  .gv-tbl .ns-tag { font-size: 10.5px; color: var(--faint); border: 1px solid var(--border); border-radius: 4px; padding: 0 4px; margin-left: 4px; white-space: nowrap; }
   .gv-foot { padding: 8px 14px; border-top: 1px solid var(--border); font-size: 12px; color: var(--faint); background: var(--surface); }
   kbd { font: 11px ui-monospace, monospace; border: 1px solid var(--border); border-radius: 4px; padding: 0 4px; color: var(--muted); background: var(--surface-2); }
   .cmdbar { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); z-index: 9; width: min(640px, calc(100% - 32px)); display: flex; align-items: center; gap: 8px;
