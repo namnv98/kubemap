@@ -130,6 +130,7 @@ function actionTools(n) {
   if (n.missing) return '';
   const I = p => `<svg class="i" viewBox="0 0 24 24">${p}</svg>`;
   const b = [`<button class="tool" data-act="manifest">${I('<path d="M8 7l-5 5 5 5M16 7l5 5-5 5"/>')}${state.writeEnabled ? 'YAML / Sửa' : 'YAML'}</button>`];
+  if (typeof pfTool === 'function') b.push(pfTool(n)); // read-only too: it changes nothing in the cluster
   if (!state.writeEnabled) return b.join('');
   if (SCALABLE.includes(n.kind) && !(n.kind === 'ReplicaSet' && hasOwner(n.id)))
     b.push(`<button class="tool" data-act="scale-toggle" aria-expanded="${state.scaleOpen === n.id}">${I('<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>')}Scale</button>`);

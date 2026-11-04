@@ -33,7 +33,7 @@ public class WriteGuardFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String uri = request.getRequestURI();
-        return !uri.startsWith("/api/actions/") && !uri.startsWith("/api/clusters");
+        return !uri.startsWith("/api/actions/") && !uri.startsWith("/api/clusters") && !uri.startsWith("/api/portforward");
     }
 
     @Override
@@ -41,7 +41,7 @@ public class WriteGuardFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
         boolean read = "GET".equals(req.getMethod());
         // switching / importing a kubeconfig changes nothing in a cluster, so read-only mode allows it
-        boolean clusterPicker = req.getRequestURI().startsWith("/api/clusters");
+        boolean clusterPicker = req.getRequestURI().startsWith("/api/clusters") || req.getRequestURI().startsWith("/api/portforward");
         if (!read && !writeEnabled && !clusterPicker) {
             deny(res, "Tính năng thay đổi cluster đang tắt (k8s-studio.write.enabled=false)");
             return;
