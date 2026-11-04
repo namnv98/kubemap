@@ -546,8 +546,8 @@
     #dpWide, .dp-resize { display: none; }
     .search { flex-basis: 100%; order: 10; } .search kbd { display: none; }
     .health { order: 11; flex-basis: 100%; }
-    .filterbar { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
-    .filterbar::-webkit-scrollbar { display: none; }
+    .filterbar { flex-wrap: wrap; }
+    .fpresets { order: 3; max-width: 100%; overflow-x: auto; scrollbar-width: none; }
     .legend { display: none; }
     .logq input { width: 130px; }
     #edgeModes, #ctx, .legend { display: none; }
@@ -836,6 +836,47 @@
   .hi-values .CodeMirror { height: 100%; min-height: 200px; font-size: 12px; }
   .hi-out { max-height: 160px; flex: none; }
   .bad { color: var(--error); }
+  /* ---------- kind filter bar ---------- */
+  .filterbar { gap: 10px; }
+  .fpresets button { white-space: nowrap; }
+  .fpills { display: flex; gap: 4px; flex: 1; min-width: 0; overflow-x: auto; scrollbar-width: none; padding: 1px 0; align-items: center; }
+  .fpills::-webkit-scrollbar { display: none; }
+  .fpills.more { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 40px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 40px), transparent); }
+  .fempty { flex: none; color: var(--faint); font-size: 11.5px; white-space: nowrap; cursor: help; }
+  .fpill { display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 9px 0 8px; border-radius: 999px; flex: none; cursor: pointer;
+    background: color-mix(in srgb, var(--c) 12%, transparent); border: 1px solid color-mix(in srgb, var(--c) 38%, transparent); color: var(--text); font: inherit; font-size: 12px; font-weight: 600; }
+  .fpill svg { width: 13px; height: 13px; color: var(--c); }
+  .fpill .n { font-weight: 500; color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+  .fpill:hover { background: transparent; border-style: dashed; color: var(--muted); } .fpill:hover span:not(.n) { text-decoration: line-through; }
+  .fpill.empty { opacity: .55; }
+  .fnone { color: var(--faint); font-size: 12px; align-self: center; }
+  .fmenu { position: relative; flex: none; }
+  .fbtn { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 8px 0 10px; border-radius: 8px; border: 1px solid var(--border-strong);
+    background: var(--surface-2); color: var(--text); font: inherit; font-size: 12.5px; cursor: pointer; }
+  .fbtn b { color: var(--accent); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .fbtn .caret { width: 13px; height: 13px; color: var(--muted); transition: transform .15s; }
+  .fmenu.open .fbtn { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); } .fmenu.open .fbtn .caret { transform: rotate(180deg); }
+  .fpanel { display: none; position: absolute; right: 0; top: 34px; z-index: 30; width: min(460px, calc(100vw - 24px)); max-height: min(560px, calc(100vh - 140px));
+    flex-direction: column; background: var(--surface); border: 1px solid var(--border-strong); border-radius: 12px; box-shadow: var(--shadow); overflow: hidden; }
+  .fmenu.open .fpanel { display: flex; }
+  .fp-search { position: relative; padding: 10px 10px 6px; }
+  .fp-search svg { position: absolute; left: 20px; top: 17px; width: 14px; height: 14px; color: var(--muted); }
+  .fp-search input { width: 100%; box-sizing: border-box; height: 30px; padding: 0 10px 0 30px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text); font: inherit; font-size: 12.5px; }
+  .fp-search input:focus { outline: none; border-color: var(--accent); }
+  .fp-groups { overflow: auto; padding: 0 10px 8px; columns: 2; column-gap: 12px; }
+  .fg { display: flex; flex-direction: column; gap: 1px; padding-top: 8px; min-width: 0; break-inside: avoid; }
+  .fg-h b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .fg-h, .fk { display: flex; align-items: center; gap: 8px; width: 100%; padding: 5px 6px; border: 0; border-radius: 7px; background: none; color: var(--text); font: inherit; font-size: 12.5px; cursor: pointer; text-align: left; min-width: 0; }
+  .fg-h { font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); }
+  .fg-h b { font-weight: 700; } .fg-h .n, .fk .n { margin-left: auto; color: var(--faint); font-size: 11px; font-variant-numeric: tabular-nums; text-transform: none; letter-spacing: 0; }
+  .fg-h:hover, .fk:hover { background: var(--surface-2); }
+  .fk svg { width: 14px; height: 14px; color: var(--c); flex: none; } .fk .l { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .fk.empty .l, .fk.empty svg { opacity: .5; }
+  .ck { width: 14px; height: 14px; flex: none; border-radius: 4px; border: 1.5px solid var(--border-strong); display: grid; place-items: center; }
+  .ck.on { background: var(--accent); border-color: var(--accent); } .ck.on::after { content: ''; width: 7px; height: 4px; border: 2px solid #fff; border-top: 0; border-right: 0; transform: rotate(-45deg) translate(1px, -1px); }
+  .ck.part { border-color: var(--accent); } .ck.part::after { content: ''; width: 7px; height: 2px; background: var(--accent); border-radius: 1px; }
+  .fp-foot { display: flex; gap: 8px; justify-content: flex-end; padding: 8px 10px; border-top: 1px solid var(--border); }
+  @media (max-width: 560px) { .fp-groups { columns: 1; } .fpanel { position: fixed; left: 12px; right: 12px; top: 120px; width: auto; } }
 </style>
 </head>
 <body>
@@ -872,11 +913,7 @@
   <button class="icon-btn" id="togglePanel" title="Ẩn/hiện panel chi tiết"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16"/></svg></button>
 </header>
 
-<nav class="filterbar">
-  <span class="label">Hiển thị</span>
-  <div id="kinds" style="display:contents"></div>
-  <div class="more" id="more"><button class="kchip" id="moreBtn" aria-haspopup="true" aria-expanded="false"><svg class="i" viewBox="0 0 24 24"><path d="M5 12h.01M12 12h.01M19 12h.01"/></svg>Thêm <b id="moreCount"></b></button><div class="more-menu" id="moreMenu" role="menu"></div></div>
-</nav>
+<nav class="filterbar" id="filterbar" aria-label="Lọc loại tài nguyên"></nav>
 
 <div class="nodebar" id="nodebar" hidden></div>
 
@@ -977,6 +1014,7 @@
 <div class="modal-back" id="modal" hidden><div class="modal" id="modalBox" role="dialog" aria-modal="true"></div></div>
 <div class="toasts" id="toasts" aria-live="polite"></div>
 <script src="app.js"></script>
+<script src="filters.js"></script>
 <script src="logs.js"></script>
 <script src="actions.js"></script>
 <script src="terminal.js"></script>

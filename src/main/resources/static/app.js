@@ -886,11 +886,8 @@ function updateCounts() {
     if (n.missing || foreign(n) || (n.kind === 'Node' && !nodeCardWanted(n))) return;
     const c = chipOf(n); counts[c] = (counts[c] || 0) + 1;
   });
-  document.querySelectorAll('.kchip[data-chip]').forEach(c => {
-    const n = counts[c.dataset.chip] || 0;
-    c.querySelector('.n').textContent = n;
-    c.classList.toggle('empty', n === 0);
-  });
+  state.kindCounts = counts;
+  if (typeof renderFilters === 'function') renderFilters();
   const vis = g.nodes.filter(isVisible).filter(n => n.health !== 'unknown');
   const by = h => vis.filter(n => n.health === h).length;
   $('cErr').textContent = by('error'); $('cWarn').textContent = by('warn'); $('cOk').textContent = by('ok');
@@ -1437,33 +1434,11 @@ cy.on('mouseout', 'node.card', e => { state.hovered = null; e.target.removeClass
 cy.on('mouseover', 'node.group, node.tile', e => { e.target.addClass('hover'); $('cy').style.cursor = dragMode ? 'grab' : 'pointer'; });
 cy.on('mouseout', 'node.group, node.tile', e => { e.target.removeClass('hover'); $('cy').style.cursor = ''; });
 
+/* kind filter state; the filter bar UI lives in filters.js */
 for (const c of CHIPS) {
-  const k = KINDS[c.id] || {};
-  const label = c.label || k.label, color = c.color || k.color;
   const saved = store.get('chip.' + c.id);
   chipOn[c.id] = saved === null ? c.on : saved === '1';
-  const b = document.createElement('button');
-  b.className = 'kchip' + (chipOn[c.id] ? ' on' : ''); b.dataset.chip = c.id; b.style.setProperty('--c', color);
-  b.title = c.title || c.id;
-  b.setAttribute('aria-pressed', String(chipOn[c.id]));
-  b.innerHTML = `${icon(ICONS[c.id] ? c.id : 'Custom')}<span class="full">${esc(label)}</span><span class="short">${esc(c.short || label)}</span><span class="n">0</span>`;
-  b.onclick = () => {
-    chipOn[c.id] = !chipOn[c.id]; b.classList.toggle('on', chipOn[c.id]); b.setAttribute('aria-pressed', String(chipOn[c.id]));
-    store.set('chip.' + c.id, chipOn[c.id] ? '1' : '0'); updateMoreCount(); render(false);
-  };
-  (c.more ? $('moreMenu') : $('kinds')).appendChild(b);
 }
-function updateMoreCount() {
-  const n = CHIPS.filter(c => c.more && chipOn[c.id]).length;
-  $('moreCount').textContent = n ? `· ${n} bật` : '';
-}
-updateMoreCount();
-$('moreBtn').onclick = e => {
-  e.stopPropagation();
-  const open = $('more').classList.toggle('open');
-  $('moreBtn').setAttribute('aria-expanded', String(open));
-};
-document.addEventListener('click', e => { if (!e.target.closest('#more')) { $('more').classList.remove('open'); $('moreBtn').setAttribute('aria-expanded', 'false'); } });
 /* icon-only buttons: expose their tooltip as the accessible name */
 document.querySelectorAll('button[title]').forEach(b => { if (!b.textContent.trim() && !b.hasAttribute('aria-label')) b.setAttribute('aria-label', b.title); });
 /* legend */
