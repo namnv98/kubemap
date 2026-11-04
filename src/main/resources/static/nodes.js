@@ -1,6 +1,7 @@
 'use strict';
 /*
- * Node bar: a strip under the filter bar with every cluster node, always visible (Node cards on the graph stay
+ * Node helpers (podsOnNode, shortNode) used by the grid and timeline; the node bar itself is no longer in the layout
+ * (Node cards on the graph stay
  * available through the "Node" filter chip). Each node shows Ready state, role, how many pods of
  * the current view run on it, and CPU / memory usage. Clicking a node opens its details (Describe…) and dims every
  * pod that does not run on it (the view is not moved); clicking it again clears that.
@@ -30,6 +31,7 @@ function meter(label, pct) {
 
 function renderNodebar(g) {
   const bar = $('nodebar');
+  if (!bar) return; // the node bar was removed from the layout; helpers above are still used by grid / timeline
   const nodes = (g.nodes || []).filter(n => n.kind === 'Node' && !n.missing)
     .sort((a, b) => (/control-plane|master/.test(b.info?.roles) - /control-plane|master/.test(a.info?.roles)) || a.name.localeCompare(b.name));
   if (state.nodeFocus && !nodes.some(n => n.id === state.nodeFocus)) state.nodeFocus = null;
@@ -61,7 +63,7 @@ function renderNodebar(g) {
   if (bar.dataset.html !== html) { bar.innerHTML = html; bar.dataset.html = html; }
 }
 
-$('nodebar').addEventListener('click', e => {
+$('nodebar')?.addEventListener('click', e => {
   const b = e.target.closest('button[data-node]');
   if (!b || !state.graph) return;
   const id = b.dataset.node;
