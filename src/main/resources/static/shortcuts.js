@@ -43,12 +43,12 @@ function runCmd(raw) {
     $('ns').value = ns; $('ns').dispatchEvent(new Event('change'));
     return;
   }
-  if (CMD_VIEWS[c]) { VIEWS[CMD_VIEWS[c]](true); if (c === 'grid' || c === 'g') { gv.kind = null; renderGrid(); } return; }
+  if (CMD_VIEWS[c]) { VIEWS[CMD_VIEWS[c]](true); return; }
   const kind = CMD_KINDS[c] || Object.values(CMD_KINDS).find(k => k.toLowerCase() === c);
   if (kind) {
-    gv.kind = kind;
-    if (args[0]) { $('q').value = args.join(' '); $('q').dispatchEvent(new Event('input')); }
-    setGrid(true); renderGrid();
+    setGrid(true);
+    gridKind(kind);
+    if (args[0]) { $('gvQ').value = args.join(' '); $('gvQ').dispatchEvent(new Event('input')); }
     return;
   }
   toast('Không hiểu lệnh: ' + raw, 'err');
@@ -73,7 +73,7 @@ function showKeys() {
       ${k([':'], 'Thanh lệnh: <code>po</code> <code>deploy</code> <code>svc</code> <code>ing</code> <code>cm</code> <code>no</code>… (mở bảng theo loại), <code>ns shop</code> / <code>ns all</code>, <code>helm</code>, <code>tl</code>, <code>sec</code>, <code>grid</code>, <code>graph</code>, <code>ctx</code>. <kbd>Tab</kbd> gợi ý.')}
       ${k(['/'], 'Tìm kiếm')}
       ${k(['1'], 'Đồ thị')} ${k(['2'], 'Bảng (grid)')} ${k(['3'], 'Events timeline')} ${k(['4'], 'Helm')} ${k(['5'], 'Bảo mật')}
-      ${k(['j', 'k'], 'Bảng: xuống / lên (cũng ↑ ↓)')} ${k(['g', 'G'], 'Bảng: đầu / cuối')}
+      ${k(['j', 'k'], 'Bảng: xuống / lên (cũng ↑ ↓)')} ${k(['g', 'G'], 'Bảng: đầu / cuối trang')} ${k(['[', ']'], 'Bảng: trang trước / sau')}
       ${k(['Enter'], 'Bảng: mở chi tiết')} ${k(['d'], 'Describe')} ${k(['y'], 'YAML')} ${k(['v'], 'Events của tài nguyên')}
       ${k(['l'], 'Log (pod / workload)')} ${k(['s'], 'Shell vào pod')} ${k(['e'], 'Sửa YAML')}
       ${k(['Esc'], 'Đóng / bỏ chọn')} ${k(['?'], 'Bảng này')}
@@ -93,6 +93,8 @@ document.addEventListener('keydown', e => {
   if (inGrid && (e.key === 'k' || e.key === 'ArrowUp')) { e.preventDefault(); e.stopImmediatePropagation(); gridMove(-1); return; }
   if (inGrid && e.key === 'g') { e.preventDefault(); gridMove(-1e9); return; }
   if (inGrid && e.key === 'G') { e.preventDefault(); gridMove(1e9); return; }
+  if (inGrid && e.key === '[') { e.preventDefault(); gridPage(-1); return; }
+  if (inGrid && e.key === ']') { e.preventDefault(); gridPage(1); return; }
   if (inGrid && e.key === 'Enter') { e.preventDefault(); e.stopImmediatePropagation(); gridOpen(); return; }
   // object keys: the grid cursor in the grid, else the selected object
   const target = inGrid ? gv.rows[gv.cursor] : state.graph?.nodes.find(n => n.id === state.selected);
