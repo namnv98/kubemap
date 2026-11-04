@@ -45,7 +45,9 @@ const GRID_ORDER = ['Ingress', 'Service', 'Deployment', 'StatefulSet', 'DaemonSe
 
 $('grid').innerHTML = `
   <div class="gv-body">
-    <div class="gv-nav" role="navigation" aria-label="Loại tài nguyên">
+    <div class="gv-nav" id="gvNav" role="navigation" aria-label="Loại tài nguyên">
+      <div class="gv-nav-h"><span class="t">Tài nguyên</span>
+        <button class="icon-btn sm gv-mini-btn" id="gvMini" title="Thu gọn thanh bên" aria-label="Thu gọn thanh bên"><svg class="i" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button></div>
       <div class="gv-nav-q"><svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
         <input id="gvNavQ" type="search" placeholder="Lọc loại…" autocomplete="off" aria-label="Lọc loại"></div>
       <div class="gv-nav-list" id="gvTabs" role="tablist" aria-orientation="vertical"></div>
@@ -75,6 +77,7 @@ const GRID_GROUPS = [
   ['Cụm', ['Node']],
 ];
 gv.navQ = '';
+gv.mini = store.get('grid2.mini') === '1';
 gv.navFolded = new Set((() => { try { return JSON.parse(store.get('grid2.navFolded') || '[]'); } catch { return []; } })());
 $('gvSize').value = String(gv.size);
 
@@ -105,7 +108,7 @@ function renderGrid() {
   const item = k => {
     const n0 = groups.get(k)[0], bad = groups.get(k).filter(n => n.health === 'error').length;
     return `<button role="tab" data-gtab="${esc(k)}" class="${tab === k ? 'on' : ''}" aria-selected="${tab === k}" style="--c:${kindInfo(n0).color}"
-      title="${esc(label(k))}${n0.group ? ' · ' + esc(n0.group) : ''}${bad ? ` · ${bad} lỗi` : ''}">${icon(iconKind(n0))}<span class="l">${esc(label(k))}</span>${bad ? '<i class="bad"></i>' : ''}<span class="n">${groups.get(k).length}</span></button>`;
+      title="${esc(label(k))} · ${groups.get(k).length}${n0.group ? ' · ' + esc(n0.group) : ''}${bad ? ` · ${bad} lỗi` : ''}"><span class="ic">${icon(iconKind(n0))}${bad ? '<i class="bad"></i>' : ''}</span><span class="l">${esc(label(k))}</span><span class="n">${groups.get(k).length}</span></button>`;
   };
   const nq = gv.navQ.toLowerCase();
   const navGroups = GRID_GROUPS.map(([name, kinds]) => [name, order.filter(k => !groups.get(k)[0].group && kinds.includes(groups.get(k)[0].kind))]);
@@ -115,12 +118,18 @@ function renderGrid() {
   $('gvTabs').innerHTML = navGroups.map(([name, ks]) => {
     const list = ks.filter(k => !nq || label(k).toLowerCase().includes(nq) || k.toLowerCase().includes(nq));
     if (!list.length) return '';
-    const folded = !nq && gv.navFolded.has(name) && !list.includes(tab);
+    if (gv.mini) return `<section class="gv-ng" title="${esc(name)}">${list.map(item).join('')}</section>`; // icon rail: no folding
+    const folded = !nq && gv.navFolded.has(name);
     const total = list.reduce((t, k) => t + groups.get(k).length, 0);
-    return `<section class="gv-ng ${folded ? 'folded' : ''}"><button class="gv-nh" data-navfold="${esc(name)}" aria-expanded="${!folded}">
-      <svg class="i caret" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg><span>${esc(name)}</span><span class="n">${total}</span></button>
-      ${folded ? '' : list.map(item).join('')}</section>`;
+    const holdsTab = list.includes(tab), bad = list.some(k => groups.get(k).some(n => n.health === 'error'));
+    return `<section class="gv-ng ${folded ? 'folded' : ''}"><button class="gv-nh" data-navfold="${esc(name)}" aria-expanded="${!folded}" title="${folded ? 'Mở' : 'Gập'} nhóm ${esc(name)}">
+      <svg class="i caret" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg><span>${esc(name)}</span>
+      ${folded && holdsTab ? `<i class="cur-dot" title="Đang xem ${esc(label(tab))}" style="--c:${kindInfo(groups.get(tab)[0]).color}"></i>` : ''}${folded && bad ? '<i class="bad-dot"></i>' : ''}<span class="n">${total}</span></button>
+      ${folded ? '' : `<div class="gv-ni">${list.map(item).join('')}</div>`}</section>`;
   }).join('') || '<p class="muted gv-nav-empty">Không có loại nào.</p>';
+  $('gvNav').classList.toggle('mini', gv.mini);
+  $('grid').querySelector('.gv-body').classList.toggle('mini', gv.mini);
+  $('gvMini').title = $('gvMini').ariaLabel = gv.mini ? 'Mở rộng thanh bên' : 'Thu gọn thanh bên';
   $('gvKindSel').innerHTML = navGroups.filter(g => g[1].length).map(([name, ks]) => `<optgroup label="${esc(name)}">${ks.map(k =>
     `<option value="${esc(k)}" ${tab === k ? 'selected' : ''}>${esc(label(k))} (${groups.get(k).length})</option>`).join('')}</optgroup>`).join('');
   if (tab) {
@@ -237,6 +246,7 @@ $('grid').addEventListener('click', e => {
 });
 $('gvQ').addEventListener('input', e => { gv.q = e.target.value.trim(); gv.page = 0; gv.cursor = 0; renderGrid(); });
 $('gvQ').addEventListener('keydown', e => { if (e.key === 'Escape') { e.stopPropagation(); e.target.value = ''; gv.q = ''; renderGrid(); $('gvWrap').focus(); } if (e.key === 'Enter' || e.key === 'ArrowDown') { e.preventDefault(); $('gvWrap').focus(); } });
+$('gvMini').addEventListener('click', () => { gv.mini = !gv.mini; store.set('grid2.mini', gv.mini ? '1' : '0'); renderGrid(); });
 $('gvNavQ').addEventListener('input', e => { gv.navQ = e.target.value.trim(); renderGrid(); });
 $('gvKindSel').addEventListener('change', e => gridKind(e.target.value));
 $('gvSize').addEventListener('change', e => { gv.size = +e.target.value; store.set('grid2.size', String(gv.size)); gv.page = 0; renderGrid(); });

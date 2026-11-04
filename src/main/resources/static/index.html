@@ -945,29 +945,48 @@
   .gv-foot kbd { margin: 0 1px; }
   @media (max-width: 720px) { .gv-bar .search.sm { flex-basis: 100%; } .gv-t .txt, .gv-t .why { max-width: 160px; } }
   /* ---------- grid: sidebar of kinds ---------- */
-  .gv-body { flex: 1; min-height: 0; display: grid; grid-template-columns: 228px minmax(0, 1fr); }
+  .gv-body { flex: 1; min-height: 0; display: grid; grid-template-columns: 236px minmax(0, 1fr); transition: grid-template-columns .18s ease; }
+  .gv-body.mini { grid-template-columns: 56px minmax(0, 1fr); }
   .gv-main { display: flex; flex-direction: column; min-height: 0; min-width: 0; }
-  .gv-nav { border-right: 1px solid var(--border); background: var(--surface); display: flex; flex-direction: column; min-height: 0; }
-  .gv-nav-q { position: relative; padding: 10px; border-bottom: 1px solid var(--border); }
-  .gv-nav-q svg { position: absolute; left: 20px; top: 18px; width: 14px; height: 14px; color: var(--muted); }
+  .gv-nav { border-right: 1px solid var(--border); background: var(--surface); display: flex; flex-direction: column; min-height: 0; min-width: 0; overflow: hidden; }
+  .gv-nav-h { display: flex; align-items: center; gap: 8px; padding: 12px 10px 8px 16px; }
+  .gv-nav-h .t { flex: 1; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .8px; color: var(--faint); white-space: nowrap; }
+  .gv-mini-btn svg { transition: transform .18s; }
+  .gv-nav.mini .gv-nav-h { padding: 12px 0 8px; justify-content: center; } .gv-nav.mini .gv-nav-h .t { display: none; }
+  .gv-nav.mini .gv-mini-btn svg { transform: rotate(180deg); }
+  .gv-nav-q { position: relative; padding: 0 10px 10px; }
+  .gv-nav-q svg { position: absolute; left: 20px; top: 8px; width: 14px; height: 14px; color: var(--muted); }
   .gv-nav-q input { width: 100%; box-sizing: border-box; height: 30px; padding: 0 8px 0 30px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text); font: inherit; font-size: 12.5px; }
-  .gv-nav-q input:focus { outline: none; border-color: var(--accent); }
-  .gv-nav-list { overflow: auto; padding: 4px 8px 12px; flex: 1; }
-  .gv-ng { padding-top: 6px; }
-  .gv-nh { display: flex; align-items: center; gap: 6px; width: 100%; padding: 5px 6px; border: 0; background: none; color: var(--faint); font: inherit;
-    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; cursor: pointer; border-radius: 6px; }
-  .gv-nh:hover { color: var(--muted); background: var(--surface-2); }
-  .gv-nh .caret { width: 13px; height: 13px; transition: transform .15s; } .gv-ng.folded .gv-nh .caret { transform: rotate(-90deg); }
-  .gv-nh .n { margin-left: auto; font-weight: 500; letter-spacing: 0; font-variant-numeric: tabular-nums; }
-  .gv-nav-list button[data-gtab] { display: flex; align-items: center; gap: 8px; width: 100%; height: 30px; padding: 0 8px 0 10px; border: 0; border-radius: 7px; background: none;
-    color: var(--text); font: inherit; font-size: 12.5px; cursor: pointer; text-align: left; position: relative; }
-  .gv-nav-list button[data-gtab] svg { width: 15px; height: 15px; color: var(--c); flex: none; }
+  .gv-nav-q input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .gv-nav.mini .gv-nav-q { display: none; }
+  .gv-nav-list { overflow-y: auto; overflow-x: hidden; padding: 2px 8px 12px; flex: 1; scrollbar-width: thin; }
+  .gv-ng + .gv-ng { margin-top: 4px; }
+  .gv-nh { display: flex; align-items: center; gap: 6px; width: 100%; height: 28px; padding: 0 8px 0 4px; border: 0; background: none; color: var(--muted); font: inherit;
+    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; cursor: pointer; border-radius: 7px; }
+  .gv-nh:hover { color: var(--text); background: var(--surface-2); }
+  .gv-nh .caret { width: 14px; height: 14px; color: var(--faint); transition: transform .15s; } .gv-ng.folded .gv-nh .caret { transform: rotate(-90deg); }
+  .gv-nh .n { margin-left: auto; font-weight: 600; letter-spacing: 0; font-size: 11px; color: var(--faint); font-variant-numeric: tabular-nums; }
+  .gv-nh .cur-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--c); box-shadow: 0 0 0 3px color-mix(in srgb, var(--c) 25%, transparent); }
+  .gv-nh .bad-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--error); }
+  .gv-ni { display: flex; flex-direction: column; gap: 1px; padding: 2px 0 4px 8px; margin-left: 10px; border-left: 1px solid var(--border); }
+  .gv-nav-list button[data-gtab] { display: flex; align-items: center; gap: 9px; width: 100%; height: 30px; padding: 0 6px 0 8px; border: 0; border-radius: 7px; background: none;
+    color: var(--text); font: inherit; font-size: 12.5px; cursor: pointer; text-align: left; }
+  .gv-nav-list button[data-gtab] .ic { position: relative; display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 6px; flex: none; }
+  .gv-nav-list button[data-gtab] .ic svg { width: 15px; height: 15px; color: var(--c); }
+  .gv-nav-list button[data-gtab] .ic .bad { position: absolute; top: 0; right: 0; width: 6px; height: 6px; border-radius: 50%; background: var(--error); box-shadow: 0 0 0 2px var(--surface); }
   .gv-nav-list button[data-gtab] .l { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .gv-nav-list button[data-gtab] .n { color: var(--faint); font-size: 11.5px; font-variant-numeric: tabular-nums; }
-  .gv-nav-list button[data-gtab] .bad { width: 6px; height: 6px; border-radius: 50%; background: var(--error); flex: none; }
-  .gv-nav-list button[data-gtab]:hover { background: var(--surface-2); }
-  .gv-nav-list button[data-gtab].on { background: var(--accent-soft); font-weight: 600; box-shadow: inset 3px 0 0 var(--c); }
-  .gv-nav-list button[data-gtab].on .n { color: var(--text); }
+  .gv-nav-list button[data-gtab] .n { min-width: 22px; height: 18px; padding: 0 6px; box-sizing: border-box; border-radius: 9px; display: inline-grid; place-items: center;
+    background: var(--surface-2); color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+  .gv-nav-list button[data-gtab]:hover { background: var(--surface-2); } .gv-nav-list button[data-gtab]:hover .n { background: var(--border); }
+  .gv-nav-list button[data-gtab].on { background: color-mix(in srgb, var(--c) 12%, transparent); font-weight: 600; }
+  .gv-nav-list button[data-gtab].on .ic { background: color-mix(in srgb, var(--c) 18%, transparent); }
+  .gv-nav-list button[data-gtab].on .n { background: var(--c); color: #fff; }
+  .gv-nav.mini .gv-nav-list { padding: 2px 6px 12px; }
+  .gv-nav.mini .gv-ng { display: flex; flex-direction: column; gap: 2px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+  .gv-nav.mini .gv-ng:last-child { border-bottom: 0; }
+  .gv-nav.mini button[data-gtab] { justify-content: center; padding: 0; height: 36px; }
+  .gv-nav.mini button[data-gtab] .l, .gv-nav.mini button[data-gtab] .n { display: none; }
+  .gv-nav.mini button[data-gtab] .ic { width: 30px; height: 30px; } .gv-nav.mini button[data-gtab] .ic svg { width: 17px; height: 17px; }
   .gv-nav-empty { padding: 12px; font-size: 12px; }
   .gv-title { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; white-space: nowrap; }
   .gv-title .k { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 7px; background: color-mix(in srgb, var(--c) 14%, transparent); }
