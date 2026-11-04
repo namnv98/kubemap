@@ -13,6 +13,7 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
 import org.springframework.stereotype.Service;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -58,9 +59,26 @@ public class ManifestService {
     }
 
     public Manifest read(String kind, String ns, String name) {
+        return read(kind, ns, name, false, true);
+    }
+
+    /**
+     * clean=true drops what the API server / controllers fill in (uid, resourceVersion, timestamps, generation,
+     * last-applied and revision annotations), so a comparison shows real differences; status=false drops .status too.
+     */
+    public Manifest read(String kind, String ns, String name, boolean clean, boolean status) {
         HasMetadata live = fetch(kind, ns, name);
         HasMetadata view = ser.clone(live);
         view.getMetadata().setManagedFields(null);
+        if (clean) {
+            var m = view.getMetadata();
+            m.setUid(null); m.setResourceVersion(null); m.setCreationTimestamp(null); m.setGeneration(null); m.setSelfLink(null);
+            if (m.getAnnotations() != null) {
+                m.getAnnotations().keySet().removeAll(List.of(LAST_APPLIED, "deployment.kubernetes.io/revision", "deprecated.daemonset.template.generation"));
+                if (m.getAnnotations().isEmpty()) m.setAnnotations(null);
+            }
+            if (m.getOwnerReferences() != null) m.getOwnerReferences().forEach(r -> r.setUid(null));
+        }
         boolean secret = view instanceof Secret;
         if (view instanceof Secret s) {
             if (s.getData() != null) s.getData().replaceAll((k, v) -> MASK);
@@ -68,8 +86,16 @@ public class ManifestService {
             if (s.getMetadata().getAnnotations() != null && s.getMetadata().getAnnotations().containsKey(LAST_APPLIED))
                 s.getMetadata().getAnnotations().put(LAST_APPLIED, MASK);
         }
+        String yaml = toYaml(view);
+        if (!status) {
+            try {
+                @SuppressWarnings("unchecked") Map<String, Object> tree = ser.convertValue(view, Map.class);
+                tree.remove("status");
+                yaml = YAML.writeValueAsString(tree);
+            } catch (JsonProcessingException ignored) {}
+        }
         return new Manifest(live.getKind(), live.getApiVersion(), live.getMetadata().getNamespace(), name,
-                live.getMetadata().getResourceVersion(), toYaml(view), secret, managedBy.detect(live).orElse(null));
+                live.getMetadata().getResourceVersion(), yaml, secret, managedBy.detect(live).orElse(null));
     }
 
     /**

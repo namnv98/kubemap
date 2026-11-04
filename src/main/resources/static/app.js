@@ -1274,6 +1274,7 @@ async function renderYamlTab(n, keep) {
     <div class="yaml-bar"><span class="muted small" id="yamlRv">Đang tải…</span>
       <button class="tool" data-yaml="reload"><svg class="i" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 15.5-6.2L21 8M21 3v5h-5"/></svg>Tải lại</button>
       <button class="tool" data-yaml="copy">Sao chép</button>
+      <button class="tool" data-yaml="compare" title="So sánh với một ${esc(n.kind)} khác"><svg class="i" viewBox="0 0 24 24"><path d="M8 3v18M16 3v18M3 8h5M16 16h5"/></svg>So sánh…</button>
       ${state.writeEnabled ? `<button class="tool primary" data-act="manifest"><svg class="i" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg>Sửa</button>` : ''}</div>
     <div class="yaml-view" id="yamlView"></div></div>`;
   try {
@@ -1337,6 +1338,7 @@ $('detail').addEventListener('click', e => {
   if (e.target.closest('[data-hist=reload]')) { const n = state.graph.nodes.find(x => x.id === state.selected); if (n) { state.history = null; renderHistoryTab(n, false); } return; }
   const y = e.target.closest('[data-yaml]');
   if (y && y.dataset.yaml === 'reload') { const n = state.graph.nodes.find(x => x.id === state.selected); if (n) renderYamlTab(n, false); }
+  if (y && y.dataset.yaml === 'compare') { const n = state.graph.nodes.find(x => x.id === state.selected); if (n && typeof compareObject === 'function') compareObject(n); }
   if (y && y.dataset.yaml === 'copy' && state.yamlView) navigator.clipboard?.writeText(state.yamlView.getValue()).then(() => typeof toast === 'function' && toast('Đã sao chép YAML'));
 });
 if (store.get('widePanel') === '1') $('main').classList.add('wide-panel');

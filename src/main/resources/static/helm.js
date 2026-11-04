@@ -72,7 +72,8 @@ function renderHelmDetail() {
           <span class="st">${st}</span></button>`;
       }).join('')}</div>`;
     },
-    history: () => `<table class="tbl hm-hist"><thead><tr><th>Rev</th><th>Trạng thái</th><th>Chart</th><th>App</th><th>Cập nhật</th><th>Mô tả</th></tr></thead><tbody>
+    history: () => `<div class="hm-vbar"><button class="btn sm" id="hmCompare" ${d.history.length < 2 ? 'disabled' : ''}>So sánh revision…</button></div>
+      <table class="tbl hm-hist"><thead><tr><th>Rev</th><th>Trạng thái</th><th>Chart</th><th>App</th><th>Cập nhật</th><th>Mô tả</th></tr></thead><tbody>
       ${d.history.map(h => `<tr><td>${h.revision}</td><td>${statusPill(h.status)}</td><td>${esc(h.chart)}-${esc(h.chartVersion)}</td><td>${esc(h.appVersion)}</td>
         <td title="${esc(h.updated)}">${hmAgo(h.updated)} trước</td><td class="desc">${esc(h.description)}</td></tr>`).join('')}</tbody></table>`,
     values: () => `<div class="hm-vbar">
@@ -164,6 +165,7 @@ $('helm').addEventListener('click', async e => {
   const t = e.target.closest('[data-htab]');
   if (t) { hm.tab = t.dataset.htab; store.set('helm.tab', hm.tab); renderHelmDetail(); return; }
   if (e.target.closest('#hmShowValues')) { loadValues(); return; }
+  if (e.target.closest('#hmCompare')) { compareHelmRevisions(hm.detail.summary.namespace, hm.detail.summary.name, hm.detail.history); return; }
   const va = e.target.closest('[data-vall]');
   if (va) { hm.valuesAll = va.dataset.vall === '1'; if (hm.values != null) loadValues(); else renderHelmDetail(); return; }
   const cp = e.target.closest('[data-copy]');

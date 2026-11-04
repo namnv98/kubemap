@@ -54,8 +54,9 @@ public class ActionController {
     /** Live manifest (YAML) — read-only call, allowed even when writes are disabled. Secret values are masked. */
     @GetMapping("/manifest")
     public ManifestService.Manifest manifest(@RequestParam String kind, @RequestParam(required = false) String namespace,
-                                             @RequestParam String name) {
-        return manifests.read(kind, namespace, name);
+                                             @RequestParam String name, @RequestParam(defaultValue = "false") boolean clean,
+                                             @RequestParam(defaultValue = "true") boolean status) {
+        return manifests.read(kind, namespace, name, clean, status);
     }
 
     /** dryRun=true only validates against the API server (nothing is changed). */

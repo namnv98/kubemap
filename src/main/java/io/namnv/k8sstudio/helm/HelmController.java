@@ -33,6 +33,12 @@ public class HelmController {
                 .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Không có release " + namespace + "/" + name)));
     }
 
+    @GetMapping("/manifest")
+    public ResponseEntity<?> manifest(@RequestParam String namespace, @RequestParam String name, @RequestParam(defaultValue = "0") int revision) {
+        return helm.manifest(namespace, name, revision).<ResponseEntity<?>>map(v -> ResponseEntity.ok(Map.of("yaml", v)))
+                .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Không có release " + namespace + "/" + name)));
+    }
+
     /** values of one revision (0 = latest): user-supplied, or merged with the chart's defaults when all=true */
     @GetMapping("/values")
     public ResponseEntity<?> values(@RequestParam String namespace, @RequestParam String name,

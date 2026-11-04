@@ -103,6 +103,13 @@ public class HelmService {
                 resources(manifest, ns), history, hasUser));
     }
 
+    /** rendered manifest of one revision (0 = latest), Secret values masked */
+    public Optional<String> manifest(String ns, String name, int revision) {
+        return stored(ns).stream().filter(x -> x.name().equals(name) && x.ns().equals(ns))
+                .filter(x -> revision <= 0 || x.version() == revision).max(Comparator.comparingInt(Stored::version))
+                .map(s -> maskSecrets(str(decode(s).get("manifest"), "")));
+    }
+
     /** user-supplied values (`helm get values`) or, with all=true, chart defaults merged with them (`helm get values --all`) */
     public Optional<String> values(String ns, String name, int revision, boolean all) {
         Optional<Stored> s = stored(ns).stream().filter(x -> x.name().equals(name) && x.ns().equals(ns))
