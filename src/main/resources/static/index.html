@@ -961,14 +961,14 @@
   .gv-nav.mini .gv-nav-q { display: none; }
   .gv-nav-list { overflow-y: auto; overflow-x: hidden; padding: 2px 8px 12px; flex: 1;
     scrollbar-gutter: stable; }
-  .gv-nav-list::-webkit-scrollbar { width: 6px; }
+  .gv-nav-list::-webkit-scrollbar { width: 4px; }
   .gv-nav-list::-webkit-scrollbar-track { background: transparent; }
   .gv-nav-list::-webkit-scrollbar-thumb { background: transparent; border-radius: 3px; }
   .gv-nav:hover .gv-nav-list::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--text) 22%, transparent); }
   .gv-nav-list::-webkit-scrollbar-thumb:hover { background: color-mix(in srgb, var(--text) 38%, transparent); }
   .gv-nav-list::-webkit-scrollbar-button { display: none; height: 0; }
   /* the table scrolls the same way: thin, no track, visible while hovering */
-  .gv-wrap::-webkit-scrollbar { width: 8px; height: 8px; } .gv-wrap::-webkit-scrollbar-track { background: transparent; }
+  .gv-wrap::-webkit-scrollbar { width: 6px; height: 6px; } .gv-wrap::-webkit-scrollbar-track { background: transparent; }
   .gv-wrap::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--text) 14%, transparent); border-radius: 4px; }
   .gv-wrap:hover::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--text) 28%, transparent); }
   .gv-wrap::-webkit-scrollbar-button { display: none; height: 0; }
@@ -1081,9 +1081,9 @@
   /* ---------- scrollbars (whole app) ----------
      Chrome ≥ 121 ignores ::-webkit-scrollbar as soon as scrollbar-width / scrollbar-color is set on the element,
      so the standard properties are only used where ::-webkit-scrollbar doesn't exist (Firefox). */
-  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
   ::-webkit-scrollbar-track, ::-webkit-scrollbar-corner { background: transparent; }
-  ::-webkit-scrollbar-thumb { background-color: color-mix(in srgb, var(--text) 18%, transparent); border-radius: 10px; border: 3px solid transparent; background-clip: padding-box; min-height: 32px; }
+  ::-webkit-scrollbar-thumb { background-color: color-mix(in srgb, var(--text) 18%, transparent); border-radius: 6px; border: 1px solid transparent; background-clip: padding-box; min-height: 32px; }
   ::-webkit-scrollbar-thumb:hover { background-color: color-mix(in srgb, var(--text) 34%, transparent); }
   ::-webkit-scrollbar-thumb:active { background-color: color-mix(in srgb, var(--text) 45%, transparent); }
   ::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
