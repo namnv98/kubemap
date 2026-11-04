@@ -783,6 +783,16 @@
   .m-body.pf input[type=number] { width: 110px; height: 28px; padding: 0 8px; border-radius: 7px; border: 1px solid var(--border-strong); background: var(--surface-2); color: var(--text); font: 12.5px ui-monospace, monospace; }
   .m-body.pf .muted, .m-body .muted { color: var(--faint); }
   .tbl .bad { color: var(--error); }
+  /* ---------- metrics history ---------- */
+  .mx { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .mx-c { border: 1px solid var(--border); border-radius: 9px; padding: 8px 10px 6px; background: var(--surface-2); min-width: 0; }
+  .mx-h { display: flex; align-items: baseline; gap: 6px; font-size: 12px; flex-wrap: wrap; }
+  .mx-h .cur { font-weight: 700; font-variant-numeric: tabular-nums; } .mx-h .muted { color: var(--faint); font-size: 11px; margin-left: auto; }
+  .mx-c svg { display: block; width: 100%; height: 56px; margin-top: 4px; }
+  .mx-c .a { fill: color-mix(in srgb, var(--accent) 18%, transparent); }
+  .mx-c .l { fill: none; stroke: var(--accent); stroke-width: 1.6; }
+  .mx-x { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--faint); }
+  @media (max-width: 720px) { .mx { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
@@ -931,5 +941,6 @@
 <script src="diff.js"></script>
 <script src="security.js"></script>
 <script src="portforward.js"></script>
+<script src="metrics.js"></script>
 </body>
 </html>

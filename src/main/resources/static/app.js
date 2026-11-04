@@ -1118,7 +1118,7 @@ function factsGrid(info) {
 }
 
 function overviewTab(n, d) {
-  let html = reasonBox(n) + factsGrid(n.info);
+  let html = reasonBox(n) + factsGrid(n.info) + (typeof mxBlock === 'function' ? mxBlock(n) : '');
   if (n.missing) return html;
   if (!d) return html + `<div class="dp-loading"><div class="spinner"></div>Đang tải chi tiết…</div>`;
   if (d.error) return html + `<p class="muted">Không tải được chi tiết: ${esc(d.error)}</p>`;

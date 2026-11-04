@@ -14,6 +14,8 @@ import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -46,13 +48,16 @@ public class MetricsCache {
     private volatile Map<String, Map<String, Usage>> containers = Map.of(); // ns/name -> container -> usage
     private volatile Map<String, Usage> nodes = Map.of();
     private volatile boolean available;
+    /** last hour of samples (one per poll) — "pod:ns/name" or "node:name" -> [epochMillis, cpuMilli, memBytes] */
+    private final Map<String, Deque<long[]>> history = new ConcurrentHashMap<>();
+    private static final long HISTORY_MS = 60 * 60 * 1000;
 
     public MetricsCache(KubernetesClient client, ClusterCache cache, KubeConnection connection) {
         this.client = client;
         this.cache = cache;
         exec.schedule(this::poll, 3, TimeUnit.SECONDS);
         // numbers of the previous cluster must not show up on the new one; the next poll (≤ 60s) refills
-        connection.onSwitch(() -> { pods = Map.of(); containers = Map.of(); nodes = Map.of(); available = false; });
+        connection.onSwitch(() -> { pods = Map.of(); containers = Map.of(); nodes = Map.of(); available = false; history.clear(); });
     }
 
     private void poll() {
@@ -76,6 +81,10 @@ public class MetricsCache {
             }
             Map<String, Usage> n = new HashMap<>();
             for (NodeMetrics nm : client.top().nodes().metrics().getItems()) n.put(nm.getMetadata().getName(), usage(nm.getUsage()));
+            long now = System.currentTimeMillis();
+            p.forEach((k, u) -> record("pod:" + k, now, u));
+            n.forEach((k, u) -> record("node:" + k, now, u));
+            history.entrySet().removeIf(e -> e.getValue().isEmpty() || e.getValue().peekLast()[0] < now - HISTORY_MS);
             boolean changed = !p.equals(pods) || !n.equals(nodes);
             pods = p; containers = c; nodes = n;
             if (!available) log.info("metrics-server available ({} pods)", p.size());
@@ -91,6 +100,26 @@ public class MetricsCache {
         } finally {
             if (!exec.isShutdown()) exec.schedule(this::poll, next, TimeUnit.SECONDS);
         }
+    }
+
+    private void record(String key, long now, Usage u) {
+        Deque<long[]> d = history.computeIfAbsent(key, k -> new ConcurrentLinkedDeque<>());
+        d.addLast(new long[]{now, u.cpuMilli(), u.memBytes()});
+        while (!d.isEmpty() && d.peekFirst()[0] < now - HISTORY_MS) d.pollFirst();
+    }
+
+    /** samples of a node / pod over the last hour */
+    public List<long[]> history(String key) {
+        Deque<long[]> d = history.get(key);
+        return d == null ? List.of() : new ArrayList<>(d);
+    }
+
+    /** sum of several pods' samples, aligned on poll time */
+    public List<long[]> sum(Collection<String> podKeys) {
+        TreeMap<Long, long[]> acc = new TreeMap<>();
+        for (String k : podKeys) for (long[] s : history("pod:" + k))
+            acc.merge(s[0], new long[]{s[0], s[1], s[2]}, (a, b) -> new long[]{a[0], a[1] + b[1], a[2] + b[2]});
+        return new ArrayList<>(acc.values());
     }
 
     private static Usage usage(Map<String, Quantity> m) {
