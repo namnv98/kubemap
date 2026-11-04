@@ -59,6 +59,7 @@ $('grid').innerHTML = `
         <div class="search sm"><svg class="i lead" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
           <input id="gvQ" type="search" placeholder="Tìm trong bảng…" autocomplete="off" aria-label="Tìm trong bảng"></div>
         <span class="gv-count" id="gvCount"></span>
+        <div class="seg gv-dens" role="group" aria-label="Mật độ"><button data-dense="0">Thoáng</button><button data-dense="1">Gọn</button></div>
         <div class="spacer"></div>
         <label class="gv-size">Mỗi trang <select id="gvSize" aria-label="Số dòng mỗi trang">${[25, 50, 100, 200].map(n => `<option value="${n}">${n}</option>`).join('')}</select></label>
         <nav class="gv-pages" id="gvPages" aria-label="Phân trang"></nav>
@@ -78,6 +79,7 @@ const GRID_GROUPS = [
 ];
 gv.navQ = '';
 gv.mini = store.get('grid2.mini') === '1';
+gv.dense = store.get('grid2.dense') === '1';
 gv.navFolded = new Set((() => { try { return JSON.parse(store.get('grid2.navFolded') || '[]'); } catch { return []; } })());
 $('gvSize').value = String(gv.size);
 
@@ -144,7 +146,7 @@ function renderGrid() {
   const tq = gv.q.toLowerCase();
   const rows = groups.get(tab).filter(n => !tq || [n.name, n.namespace, n.status, n.reason, ...cols.map(([c]) => cellText(n, c))]
     .some(x => String(x ?? '').toLowerCase().includes(tq)));
-  if (!['health', 'name', 'namespace', 'status', 'age', ...cols.map(c => c[0])].includes(gv.sort)) { gv.sort = 'age'; gv.dir = 1; }
+  if (!['name', 'status', 'age', ...cols.map(c => c[0])].includes(gv.sort)) { gv.sort = 'age'; gv.dir = 1; }
   const key = sortKey(gv.sort);
   rows.sort((a, b) => { const x = key(a), y = key(b); return (x < y ? -1 : x > y ? 1 : a.name.localeCompare(b.name)) * gv.dir; });
 
@@ -162,15 +164,27 @@ function renderGrid() {
   const sortIcon = c => (gv.sort === c ? `<svg class="i so" viewBox="0 0 24 24"><path d="${gv.dir > 0 ? 'M7 14l5-5 5 5' : 'M7 10l5 5 5-5'}"/></svg>` : '<svg class="i so idle" viewBox="0 0 24 24"><path d="M8 10l4-4 4 4M8 14l4 4 4-4"/></svg>');
   const th = (c, l, cls = '') => `<th data-sort="${c}" class="${cls} ${gv.sort === c ? 'on' : ''}" aria-sort="${gv.sort === c ? (gv.dir > 0 ? 'ascending' : 'descending') : 'none'}" title="Sắp xếp theo ${esc(l || 'tình trạng')}"><span>${l}${sortIcon(c)}</span></th>`;
   const ageTitle = gv.sort === 'age' ? (gv.dir > 0 ? 'mới nhất trước' : 'cũ nhất trước') : '';
-  $('gvWrap').innerHTML = page.length ? `<table class="gv-t">
-    <thead><tr>${th('health', '', 'hc')}${th('name', 'Tên')}${isAll() ? th('namespace', 'Namespace') : ''}${th('status', 'Trạng thái')}${cols.map(([c, l]) => th(c, l, NUM_COLS.has(c) ? 'num' : '')).join('')}${th('age', 'Tuổi' + (ageTitle ? ` <small>${ageTitle}</small>` : ''), 'num')}</tr></thead>
+  const mono = new Set(['podIP', 'clusterIP', 'images', 'cpu', 'memory', 'internalIP', 'kubelet', 'ports', 'schedule', 'capacity', 'request']);
+  const cell = (n, c) => {
+    const t = cellText(n, c);
+    if (t === '' || t == null) return '<span class="dash">—</span>';
+    if (c === 'restarts') { const r = +t || 0; return `<span class="rs ${r > 5 ? 'e' : r > 0 ? 'w' : ''}">${esc(t)}</span>`; }
+    if (c === 'node') return `<span class="chipc" title="${esc(n.info?.node || t)}">${esc(t)}</span>`;
+    return mono.has(c) ? `<span class="mono">${esc(t)}</span>` : esc(t);
+  };
+  const created = n => { const d = Date.parse(n.created); return isNaN(d) ? '' : new Date(d).toLocaleString('vi-VN'); };
+  const quick = n => `<span class="ra">${typeof podsFor === 'function' && podsFor(n.id).length ? `<button data-row="logs" title="Log (l)"><svg class="i" viewBox="0 0 24 24"><path d="M4 6h16M4 12h10M4 18h13"/></svg></button>` : ''}
+    <button data-row="describe" title="Describe (d)"><svg class="i" viewBox="0 0 24 24"><path d="M5 4h10l4 4v12H5z"/><path d="M9 12h6M9 16h6"/></svg></button>
+    <button data-row="yaml" title="YAML (y)"><svg class="i" viewBox="0 0 24 24"><path d="M8 7l-5 5 5 5M16 7l5 5-5 5"/></svg></button></span>`;
+  $('gvWrap').innerHTML = page.length ? `<table class="gv-t ${gv.dense ? 'dense' : ''}">
+    <thead><tr>${th('name', 'Tên')}${th('status', 'Trạng thái')}${cols.map(([c, l]) => th(c, l, NUM_COLS.has(c) ? 'num' : '')).join('')}${th('age', `<span>Tuổi${ageTitle ? `<small>${ageTitle}</small>` : ''}</span>`, 'num age')}</tr></thead>
     <tbody>${page.map(n => `<tr data-id="${esc(n.id)}" class="h-${H(n.health)} ${state.selected === n.id ? 'sel' : ''}">
-      <td class="hc"><i class="hd" style="--c:var(--${H(n.health)})" title="${esc(n.health)}"></i></td>
-      <td class="nm" title="${esc(n.name)}"><span class="t">${esc(n.name)}</span>${!isAll() && n.namespace && n.namespace !== currentNs() ? `<span class="ns-tag">ns ${esc(n.namespace)}</span>` : ''}${n.missing ? '<span class="bad">không tồn tại</span>' : ''}</td>
-      ${isAll() ? `<td class="sub">${esc(n.namespace || '—')}</td>` : ''}
-      <td class="stc"><span class="pill-st" style="--c:var(--${H(n.health)})">${esc(n.status || '—')}</span>${n.reason ? `<div class="why" title="${esc(n.reason)}">${esc(n.reason)}</div>` : ''}</td>
-      ${cols.map(([c]) => `<td class="${NUM_COLS.has(c) ? 'num' : 'txt'}" title="${esc(cellText(n, c))}">${esc(cellText(n, c)) || '<span class="dash">—</span>'}</td>`).join('')}
-      <td class="num" title="${esc(n.created || '')}">${esc(age(n.created) || '—')}</td></tr>`).join('')}</tbody></table>`
+      <td class="nm"><div class="nmw"><span class="ki" style="--c:${kindInfo(n).color}">${icon(iconKind(n))}</span>
+        <div class="nmt"><span class="t" title="${esc(n.name)}">${esc(n.name)}</span>
+          ${(isAll() || (n.namespace && n.namespace !== currentNs())) && n.namespace ? `<span class="ns">${esc(n.namespace)}</span>` : ''}${n.missing ? '<span class="bad">không tồn tại</span>' : ''}</div></div></td>
+      <td class="stc"><span class="st" style="--c:var(--${H(n.health)})"><i></i>${esc(n.status || '—')}</span>${n.reason ? `<div class="why" title="${esc(n.reason)}">${esc(n.reason)}</div>` : ''}</td>
+      ${cols.map(([c]) => `<td class="${NUM_COLS.has(c) ? 'num' : 'txt'}" title="${esc(cellText(n, c))}">${cell(n, c)}</td>`).join('')}
+      <td class="num age" title="Tạo lúc ${esc(created(n))}"><span class="av">${esc(age(n.created) || '—')}</span>${quick(n)}</td></tr>`).join('')}</tbody></table>`
     : `<div class="tl-empty">Không có ${esc(kindInfo(n0).label)} nào khớp “${esc(gv.q)}”.</div>`;
 
   // pagination: ‹ 1 … 4 5 6 … 12 ›
@@ -182,6 +196,7 @@ function renderGrid() {
       + `<span class="pinfo">${gv.page * gv.size + 1}–${Math.min(rows.length, (gv.page + 1) * gv.size)} / ${rows.length}</span>`
     : '';
   gv.tab = tab;
+  document.querySelectorAll('#grid [data-dense]').forEach(b => b.classList.toggle('on', (b.dataset.dense === '1') === gv.dense));
   const at = page.findIndex(n => n.id === state.selected);
   gv.cursor = at >= 0 ? at : Math.min(gv.cursor, Math.max(0, page.length - 1));
   markCursor();
@@ -241,8 +256,14 @@ $('grid').addEventListener('click', e => {
     gv.dir = gv.sort === c ? -gv.dir : 1; gv.sort = c; gv.page = 0;
     store.set('grid2.sort', c); store.set('grid2.dir', String(gv.dir)); renderGrid(); return;
   }
+  const dn = e.target.closest('[data-dense]');
+  if (dn) { gv.dense = dn.dataset.dense === '1'; store.set('grid2.dense', gv.dense ? '1' : '0'); renderGrid(); return; }
   const tr = e.target.closest('tr[data-id]');
-  if (tr) { gv.cursor = gv.rows.findIndex(n => n.id === tr.dataset.id); gridOpen(); }
+  if (!tr) return;
+  gv.cursor = gv.rows.findIndex(n => n.id === tr.dataset.id);
+  const ra = e.target.closest('[data-row]');
+  if (ra?.dataset.row === 'logs') { openLogsFor(tr.dataset.id); return; }
+  gridOpen(ra ? ra.dataset.row : undefined);
 });
 $('gvQ').addEventListener('input', e => { gv.q = e.target.value.trim(); gv.page = 0; gv.cursor = 0; renderGrid(); });
 $('gvQ').addEventListener('keydown', e => { if (e.key === 'Escape') { e.stopPropagation(); e.target.value = ''; gv.q = ''; renderGrid(); $('gvWrap').focus(); } if (e.key === 'Enter' || e.key === 'ArrowDown') { e.preventDefault(); $('gvWrap').focus(); } });

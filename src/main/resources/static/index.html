@@ -1009,6 +1009,43 @@
   .gv-title .grp { font-size: 11.5px; color: var(--faint); }
   .gv-kindsel { display: none; height: 30px; border-radius: 8px; border: 1px solid var(--border-strong); background: var(--surface-2); color: var(--text); font: inherit; font-size: 13px; padding: 0 8px; max-width: 100%; }
   @media (max-width: 860px) { .gv-body { grid-template-columns: 1fr; } .gv-nav { display: none; } .gv-kindsel { display: block; } .gv-title { display: none; } }
+  /* ---------- grid table, v3 ---------- */
+  .gv-wrap { padding: 0 16px 16px; }
+  .gv-bar { padding: 12px 16px; }
+  .gv-t { border: 0; border-radius: 12px; box-shadow: 0 0 0 1px var(--border), 0 1px 3px rgba(0,0,0,.05); } /* ring, not a border: width:100% no longer overflows by 2px */
+  .gv-wrap { padding-top: 1px; }
+  .gv-t thead th { background: var(--surface); font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--faint); }
+  .gv-t thead th > span { padding: 11px 12px; }
+  .gv-t thead th.on { color: var(--accent); }
+  .gv-t thead th.age small { display: block; text-transform: none; letter-spacing: 0; font-weight: 500; margin-top: 1px; } .gv-t thead th.age > span { flex-wrap: wrap; justify-content: flex-end; text-align: right; }
+  .gv-t td { padding: 9px 12px; height: 44px; box-sizing: border-box; border-bottom: 1px solid color-mix(in srgb, var(--border) 55%, transparent); }
+  .gv-t.dense td { padding: 4px 12px; height: 32px; } .gv-t.dense .nm .ns, .gv-t.dense .why { display: none; } .gv-t.dense .ki { width: 22px; height: 22px; }
+  .gv-t tbody tr:hover td { background: color-mix(in srgb, var(--accent) 5%, var(--surface)); }
+  .gv-t tbody tr.h-error td:first-child, .gv-t tbody tr.h-warn td:first-child, .gv-t tbody tr.cur td:first-child { box-shadow: none; }
+  .gv-t tbody tr.h-error td:first-child { box-shadow: inset 3px 0 0 var(--error); } .gv-t tbody tr.h-warn td:first-child { box-shadow: inset 3px 0 0 var(--warn); }
+  .gv-t tbody tr.cur td { background: var(--accent-soft); } .gv-t tbody tr.cur td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
+  .gv-t .nm { max-width: 420px; font-weight: 400; }
+  .gv-t .nmw { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .gv-t .ki { display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 8px; flex: none; background: color-mix(in srgb, var(--c) 12%, transparent); }
+  .gv-t .ki svg { width: 15px; height: 15px; color: var(--c); }
+  .gv-t .nmt { display: flex; flex-direction: column; min-width: 0; line-height: 1.3; }
+  .gv-t .nmt .t { font-weight: 600; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .gv-t .nmt .ns { font-size: 11px; color: var(--faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .gv-t .st { display: inline-flex; align-items: center; gap: 7px; font-weight: 600; font-size: 12.5px; color: var(--text); white-space: nowrap; }
+  .gv-t tr.h-error .st, .gv-t tr.h-warn .st { color: var(--c); }
+  .gv-t .st i { width: 8px; height: 8px; border-radius: 50%; background: var(--c); box-shadow: 0 0 0 3px color-mix(in srgb, var(--c) 18%, transparent); flex: none; }
+  .gv-t .why { margin: 2px 0 0 15px; }
+  .gv-t .mono { font: 12px ui-monospace, "SF Mono", Menlo, monospace; color: var(--muted); }
+  .gv-t .chipc { display: inline-block; max-width: 160px; overflow: hidden; text-overflow: ellipsis; vertical-align: middle; padding: 1px 7px; border-radius: 6px;
+    background: var(--surface-2); border: 1px solid var(--border); font-size: 11.5px; color: var(--muted); }
+  .gv-t .rs { font-variant-numeric: tabular-nums; } .gv-t .rs.w { color: var(--warn); font-weight: 700; } .gv-t .rs.e { color: var(--error); font-weight: 700; }
+  .gv-t td.age { position: relative; min-width: 84px; }
+  .gv-t .ra { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); display: none; gap: 2px; padding: 2px; border-radius: 8px;
+    background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow); }
+  .gv-t tbody tr:hover .ra { display: inline-flex; } .gv-t tbody tr:hover .av { visibility: hidden; }
+  .gv-t .ra button { width: 26px; height: 24px; display: grid; place-items: center; border: 0; border-radius: 6px; background: none; color: var(--muted); cursor: pointer; }
+  .gv-t .ra button:hover { background: var(--accent-soft); color: var(--accent); } .gv-t .ra svg { width: 14px; height: 14px; }
+  .gv-dens button { height: 26px; font-size: 12px; }
 </style>
 </head>
 <body>
