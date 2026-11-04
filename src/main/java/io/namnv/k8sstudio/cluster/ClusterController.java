@@ -23,6 +23,7 @@ public class ClusterController {
 
     public record SwitchRequest(String file, String context) {}
     public record ImportRequest(String name, String content) {}
+    public record RenameRequest(String file, String name) {}
 
     @GetMapping
     public Map<String, Object> list() {
@@ -48,6 +49,12 @@ public class ClusterController {
         Map<String, Object> out = list();
         out.put("imported", file);
         return out;
+    }
+
+    @PostMapping("/rename")
+    public Map<String, Object> rename(@RequestBody RenameRequest req) {
+        connection.rename(req.file(), req.name());
+        return list();
     }
 
     @DeleteMapping

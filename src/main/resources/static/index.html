@@ -625,6 +625,7 @@
   .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--surface-2); }
   .seg button { height: 28px; padding: 0 10px; border: 0; background: none; color: var(--muted); font: inherit; font-size: 12.5px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
   .seg button + button { border-left: 1px solid var(--border); }
+  .seg[hidden] { display: none; }
   .seg button:hover { color: var(--text); }
   .seg button.on { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
   .seg .dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
@@ -740,6 +741,38 @@
   .df-table td.empty { background: repeating-linear-gradient(135deg, transparent 0 6px, color-mix(in srgb, var(--border) 50%, transparent) 6px 7px); }
   .df-table tr.fold td { text-align: center; color: var(--accent); background: var(--accent-soft); cursor: pointer; padding: 3px; font-family: system-ui, sans-serif; }
   .df-loading { padding: 30px; text-align: center; color: var(--muted); font-family: system-ui, sans-serif; }
+  .tl-chip { margin-left: 6px; height: 22px; padding: 0 8px; border-radius: 6px; border: 1px solid var(--accent); background: var(--accent-soft); color: var(--accent); font: inherit; font-size: 12px; cursor: pointer; }
+  .cl-ren { flex: 1; min-width: 0; height: 24px; padding: 0 6px; border-radius: 6px; border: 1px solid var(--accent); background: var(--surface); color: var(--text); font: 12px ui-monospace, monospace; }
+  /* ---------- security ---------- */
+  .hm-logo.sec { background: color-mix(in srgb, var(--ok) 16%, transparent); color: var(--ok); }
+  .tl-sum b.e { color: var(--error); }
+  .sec-body { flex: 1; min-height: 0; overflow: auto; padding: 14px; display: flex; flex-direction: column; }
+  .sec-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); gap: 12px; align-items: start; }
+  .sec-card { border: 1px solid var(--border); border-radius: 10px; background: var(--surface); overflow: hidden; }
+  .sec-obj { display: flex; align-items: center; gap: 7px; width: 100%; padding: 9px 12px; border: 0; border-bottom: 1px solid var(--border); background: var(--surface-2);
+    color: var(--text); font: inherit; font-size: 12.5px; cursor: pointer; text-align: left; flex-wrap: wrap; }
+  .sec-obj:hover { background: var(--accent-soft); }
+  .sec-obj .k, .sec-tbl .k { color: var(--c); display: inline-flex; vertical-align: -2px; } .sec-obj .k svg, .sec-tbl .k svg { width: 14px; height: 14px; }
+  .sec-obj .kd { color: var(--muted); } .sec-obj .muted { color: var(--faint); font-size: 11.5px; } .sec-obj .hm-st { margin-left: auto; }
+  .sec-card ul { list-style: none; margin: 0; padding: 6px 12px 10px; display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; }
+  .sec-card li { display: flex; gap: 8px; align-items: baseline; }
+  .sec-card li i { width: 7px; height: 7px; border-radius: 50%; flex: none; transform: translateY(-1px); }
+  .sec-card li.s-high i { background: var(--error); } .sec-card li.s-medium i { background: var(--warn); } .sec-card li.s-low i { background: var(--faint); }
+  .sec-card li .muted { color: var(--muted); }
+  .sec-tbl tr.click { cursor: pointer; } .sec-tbl tr.click:hover td { background: var(--surface-2); } .sec-tbl td.desc { color: var(--muted); }
+  .sec-can { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 4px 0 10px; font-size: 12.5px; }
+  .sec-can input { height: 28px; width: 150px; padding: 0 8px; border-radius: 7px; border: 1px solid var(--border-strong); background: var(--surface-2); color: var(--text); font: 12px ui-monospace, monospace; }
+  .sec-can .muted, .sec-can-res .muted, .sec-sys, .sec-flags .muted { color: var(--faint); }
+  .sec-can-res { display: flex; flex-wrap: wrap; gap: 6px; padding-bottom: 10px; font-size: 12px; }
+  .flag { display: inline-flex; gap: 5px; align-items: baseline; padding: 2px 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface-2); font-size: 12px; }
+  .flag.bad { color: var(--error); border-color: color-mix(in srgb, var(--error) 40%, var(--border)); background: color-mix(in srgb, var(--error) 8%, transparent); }
+  .sec-rbac { border: 1px solid var(--border); border-radius: 10px; flex: 1; min-height: 360px; background: var(--surface); }
+  .sec-sys { display: flex; gap: 6px; align-items: center; font-size: 12px; padding: 4px 6px 8px; cursor: pointer; }
+  .sec-flags { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 14px; }
+  .sec-grant { margin-bottom: 14px; }
+  .sec-gh { display: flex; gap: 8px; align-items: center; font-size: 12.5px; margin-bottom: 6px; flex-wrap: wrap; }
+  .sec-gh .scope { font-size: 11px; font-weight: 600; padding: 1px 6px; border-radius: 5px; background: var(--accent-soft); color: var(--accent); }
+  @media (max-width: 720px) { .sec-list { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
@@ -766,6 +799,7 @@
     <span class="hchip" style="--c:var(--ok); cursor:default"><i></i><b id="cOk">0</b> ổn định</span>
   </div>
   <span class="live" id="live"><span class="dot"></span><span class="txt">Đang kết nối…</span></span>
+  <button class="icon-btn" id="secBtn" title="Bảo mật: cấu hình, lối vào, RBAC" aria-pressed="false"><svg class="i" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg></button>
   <button class="icon-btn" id="helmBtn" title="Helm releases" aria-pressed="false"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><circle cx="12" cy="12" r="8"/><path d="M12 1.5v4M12 18.5v4M1.5 12h4M18.5 12h4M4.6 4.6l2.8 2.8M16.6 16.6l2.8 2.8M4.6 19.4l2.8-2.8M16.6 7.4l2.8-2.8"/></svg></button>
   <button class="icon-btn" id="tlBtn" title="Events timeline" aria-pressed="false"><svg class="i" viewBox="0 0 24 24"><path d="M3 12h4l3-7 4 14 3-7h4"/></svg></button>
   <button class="icon-btn" id="auditBtn" title="Lịch sử thao tác"><svg class="i" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5M12 7v5l3 2"/></svg></button>
@@ -814,6 +848,7 @@
     </div>
     <div class="timeline" id="timeline" hidden></div>
     <div class="timeline helm" id="helm" hidden></div>
+    <div class="timeline" id="security" hidden></div>
     <div class="logs" id="logs" hidden>
       <div class="logs-resize" id="logsResize" title="Kéo để đổi chiều cao"></div>
       <div class="logs-bar">
@@ -883,5 +918,6 @@
 <script src="timeline.js"></script>
 <script src="helm.js"></script>
 <script src="diff.js"></script>
+<script src="security.js"></script>
 </body>
 </html>

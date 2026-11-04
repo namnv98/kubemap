@@ -31,6 +31,7 @@ function clusterRows(data) {
       <div class="cl-file-head">
         <span class="cl-tag ${f.managed ? 'imp' : ''}">${f.managed ? 'Đã import' : 'Máy này'}</span>
         <code title="${esc(f.file)}">${esc(f.fileLabel)}</code>
+        ${f.managed ? `<button class="icon-btn sm" data-ren="${esc(f.file)}" title="Đổi tên" aria-label="Đổi tên ${esc(f.fileLabel)}"><svg class="i" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg></button>` : ''}
         ${f.managed && !inUse ? `<button class="icon-btn sm cl-del" data-del="${esc(f.file)}" title="Xoá kubeconfig này" aria-label="Xoá ${esc(f.fileLabel)}">${ICON_TRASH}</button>` : ''}
       </div>
       ${list.map(c => `<div class="cl-row ${c.current ? 'cur' : ''}">
@@ -87,6 +88,24 @@ async function openClusterPicker() {
       if (e.target.closest('[data-close]')) { closeModal(false); return; }
       const sw = e.target.closest('button[data-ctx]');
       if (sw) { doSwitch(sw.dataset.file, sw.dataset.ctx, sw); return; }
+      const ren = e.target.closest('button[data-ren]');
+      if (ren) { // inline rename: the file label becomes an input (Enter saves, Esc cancels)
+        const code = ren.parentElement.querySelector('code');
+        const input = document.createElement('input');
+        input.className = 'cl-ren'; input.value = code.textContent.replace(/\.yaml$/, ''); input.spellcheck = false;
+        code.replaceWith(input); input.focus(); input.select();
+        const done = async save => {
+          if (input.dataset.done) return; input.dataset.done = '1';
+          if (save && input.value.trim()) {
+            try { refresh(await clusterApi('POST', '/rename', { file: ren.dataset.ren, name: input.value })); toast('Đã đổi tên'); return; }
+            catch (x) { toast(x.message, 'err'); }
+          }
+          refresh(data);
+        };
+        input.addEventListener('keydown', k => { if (k.key === 'Enter') done(true); if (k.key === 'Escape') { k.stopPropagation(); done(false); } });
+        input.addEventListener('blur', () => done(true));
+        return;
+      }
       const del = e.target.closest('button[data-del]');
       if (del) {
         if (del.dataset.armed !== '1') { // second click confirms (no browser confirm dialog)

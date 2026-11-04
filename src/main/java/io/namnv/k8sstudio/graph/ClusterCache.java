@@ -243,6 +243,14 @@ public class ClusterCache {
 
     public List<Secret> secretsIn(String namespace) { return list(secrets, namespace); }
 
+    /** cached objects of a built-in kind, by its model class (namespace null = all) */
+    @SuppressWarnings("unchecked")
+    public <T extends HasMetadata> List<T> listOf(Class<T> type, String namespace) {
+        SharedIndexInformer<? extends HasMetadata> inf = builtin(type.getSimpleName());
+        if (inf == null) return List.of();
+        return (List<T>) list(inf, namespace);
+    }
+
     public List<ConfigMap> configMapsIn(String namespace) { return list(configMaps, namespace); }
 
     /** whether objects of this kind are in the cache (so "not found" really means it doesn't exist) */

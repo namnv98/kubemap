@@ -76,4 +76,5 @@ $('nodebar').addEventListener('click', e => {
   }
   renderNodebar(state.graph);
   applyFocus();
+  if (typeof renderTimeline === 'function') renderTimeline();
 });

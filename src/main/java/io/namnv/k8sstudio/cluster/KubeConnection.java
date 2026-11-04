@@ -207,6 +207,26 @@ public class KubeConnection {
         log.info("removed kubeconfig {}", f);
     }
 
+    /** Renames a kubeconfig in the project directory; the saved selection follows it. */
+    public synchronized Path rename(String file, String newName) {
+        Path f = known(file);
+        if (!f.startsWith(dir)) throw new IllegalArgumentException("Chỉ đổi tên được kubeconfig trong " + dir);
+        String base = (newName == null ? "" : newName.trim()).replaceAll("\\.(ya?ml|conf|config|kubeconfig)$", "")
+                .replaceAll("[^A-Za-z0-9._-]+", "-").replaceAll("^[-.]+|-+$", "");
+        if (base.isEmpty()) throw new IllegalArgumentException("Tên mới không hợp lệ");
+        Path to = dir.resolve(base + ".yaml").normalize();
+        if (!to.startsWith(dir)) throw new IllegalArgumentException("Tên file không hợp lệ");
+        if (to.equals(f)) return f;
+        if (Files.exists(to)) throw new IllegalArgumentException("Đã có file " + dir.relativize(to));
+        try { Files.move(f, to); } catch (IOException e) { throw new IllegalStateException("Không đổi tên được: " + e.getMessage()); }
+        if (selection != null && f.toString().equals(selection.file())) {
+            selection = new Selection(to.toString(), selection.context());
+            saveSelection(selection);
+        }
+        log.info("renamed kubeconfig {} -> {}", f, to);
+        return to;
+    }
+
     /** Only files we list may be used: the API must not read arbitrary paths. */
     private Path known(String file) {
         Path f = Path.of(file).toAbsolutePath().normalize();

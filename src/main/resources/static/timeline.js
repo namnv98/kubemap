@@ -5,6 +5,10 @@
  * last occurrence. Click a row (or a mark) to open that object in the detail panel on its Events tab.
  * Depends on app.js globals: $, esc, state, store, icon, iconKind, kindInfo, currentNs, isAll, showDetailRaw.
  */
+/* full-canvas views (timeline, helm, security…): opening one closes the others */
+const VIEWS = {};
+function closeOtherViews(name) { for (const [k, set] of Object.entries(VIEWS)) if (k !== name) set(false); }
+
 const tl = { open: false, range: +(store.get('tl.range') || 3600), type: store.get('tl.type') || 'all', q: '', data: null, timer: null, now: 0 };
 const TL_RANGES = [[900, '15 phút'], [3600, '1 giờ'], [10800, '3 giờ'], [0, 'Tất cả']];
 const TL_BUCKETS = 72;
@@ -33,10 +37,18 @@ function tlWindow() {
   return { start, end, span: Math.max(1, end - start) };
 }
 
+/* node filter from the node bar: the node itself, its pods and what owns / routes to them */
+function tlNodeScope() {
+  if (!state.nodeFocus || typeof podsOnNode !== 'function') return null;
+  const s = upstreamOf(podsOnNode(state.nodeFocus));
+  s.add(state.nodeFocus);
+  return s;
+}
+
 function tlFiltered() {
   const { start } = tlWindow();
-  const q = tl.q.toLowerCase();
-  return (tl.data?.events || []).filter(e => e.last >= start
+  const q = tl.q.toLowerCase(), scope = tlNodeScope();
+  return (tl.data?.events || []).filter(e => e.last >= start && (!scope || scope.has(e.objectId))
     && (tl.type === 'all' || e.type === tl.type)
     && (!q || [e.name, e.kind, e.namespace, e.reason, e.message].some(x => (x || '').toLowerCase().includes(q))));
 }
@@ -85,7 +97,9 @@ function renderTimeline() {
     r.evs.push(e); if (e.type === 'Warning') r.warn += e.count; r.last = Math.max(r.last, e.last); });
   const list = [...rows.values()].sort((a, b) => (b.warn > 0) - (a.warn > 0) || b.last - a.last);
   const total = evs.reduce((s, e) => s + e.count, 0), warnTotal = evs.filter(e => e.type === 'Warning').reduce((s, e) => s + e.count, 0);
-  $('tlSum').innerHTML = `<b>${total}</b> event · <b class="w">${warnTotal}</b> warning · ${list.length} tài nguyên`;
+  const nodeName = state.nodeFocus ? state.nodeFocus.slice(state.nodeFocus.lastIndexOf('/') + 1) : null;
+  $('tlSum').innerHTML = `<b>${total}</b> event · <b class="w">${warnTotal}</b> warning · ${list.length} tài nguyên`
+    + (nodeName ? ` <button class="tl-chip" id="tlNodeOff" title="Bỏ lọc theo node">node ${esc(shortNode(nodeName))} ×</button>` : '');
   if (!list.length) {
     $('tlRows').innerHTML = `<div class="tl-empty">Không có event nào ${tl.range ? 'trong khoảng thời gian này' : ''}${tl.q || tl.type !== 'all' ? ' khớp bộ lọc' : ''}.
       <div class="muted">API server chỉ giữ event khoảng 1 giờ (mặc định <code>--event-ttl</code>).</div></div>`;
@@ -126,7 +140,7 @@ async function loadTimeline() {
 
 function setTimeline(open) {
   tl.open = open;
-  if (open && typeof setHelm === 'function' && hm.open) setHelm(false);
+  if (open) closeOtherViews('timeline');
   $('timeline').hidden = !open;
   $('tlBtn').classList.toggle('on', open);
   $('tlBtn').setAttribute('aria-pressed', String(open));
@@ -137,9 +151,11 @@ function setTimeline(open) {
   if (open) { loadTimeline(); tl.timer = setInterval(loadTimeline, 5000); }
 }
 
+VIEWS.timeline = setTimeline;
 $('tlBtn').onclick = () => setTimeline(!tl.open);
 $('tlClose').onclick = () => setTimeline(false);
 $('timeline').addEventListener('click', e => {
+  if (e.target.closest('#tlNodeOff')) { document.querySelector('#nodebar .nb.active')?.click(); return; }
   const rb = e.target.closest('[data-range]');
   if (rb) { tl.range = +rb.dataset.range; store.set('tl.range', String(tl.range)); renderTimeline(); return; }
   const tb = e.target.closest('[data-type]');

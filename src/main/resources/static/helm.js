@@ -145,7 +145,7 @@ async function loadValues() {
 
 function setHelm(open) {
   hm.open = open;
-  if (open && typeof setTimeline === 'function' && tl.open) setTimeline(false);
+  if (open) closeOtherViews('helm');
   $('helm').hidden = !open;
   $('helmBtn').classList.toggle('on', open);
   $('helmBtn').setAttribute('aria-pressed', String(open));
@@ -156,6 +156,7 @@ function setHelm(open) {
   if (open) { loadHelm(); hm.timer = setInterval(loadHelm, 10000); }
 }
 
+VIEWS.helm = setHelm;
 $('helmBtn').onclick = () => setHelm(!hm.open);
 $('hmClose').onclick = () => setHelm(false);
 $('hmQ').addEventListener('input', e => { hm.q = e.target.value.trim(); renderHelmList(); });
