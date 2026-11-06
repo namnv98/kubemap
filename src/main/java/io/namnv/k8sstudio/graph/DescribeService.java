@@ -72,6 +72,8 @@ public class DescribeService {
                 case RoleBinding b -> binding(w, b.getMetadata(), b.getRoleRef(), b.getSubjects());
                 case ClusterRoleBinding b -> binding(w, b.getMetadata(), b.getRoleRef(), b.getSubjects());
                 case ServiceAccount sa -> serviceAccount(w, sa);
+                case ResourceQuota q -> resourceQuota(w, q);
+                case LimitRange lr -> limitRange(w, lr);
                 default -> generic(w, o);
             }
             return tabwrite(w.toString());
@@ -1207,6 +1209,41 @@ public class DescribeService {
     // ================================================================== generic (custom resources…)
 
     /** kubectl's printer for objects without a dedicated describer */
+    // ================================================================== resource quota / limit range
+
+    private void resourceQuota(W w, ResourceQuota q) {
+        w.w(0, "Name:\t" + q.getMetadata().getName() + "\n");
+        w.w(0, "Namespace:\t" + q.getMetadata().getNamespace() + "\n");
+        if (q.getSpec() != null && q.getSpec().getScopes() != null && !q.getSpec().getScopes().isEmpty()) {
+            w.w(0, "Scopes:\t" + String.join(", ", q.getSpec().getScopes()) + "\n");
+        }
+        w.w(0, "Resource\tUsed\tHard\n");
+        w.w(0, "--------\t----\t----\n");
+        Map<String, Quantity> hard = q.getStatus() == null || q.getStatus().getHard() == null ? Map.of() : q.getStatus().getHard();
+        Map<String, Quantity> used = q.getStatus() == null || q.getStatus().getUsed() == null ? Map.of() : q.getStatus().getUsed();
+        for (String k : new TreeSet<>(hard.keySet()))
+            w.w(0, k + "\t" + (used.get(k) == null ? "0" : used.get(k).toString()) + "\t" + hard.get(k) + "\n");
+    }
+
+    private void limitRange(W w, LimitRange lr) {
+        w.w(0, "Name:\t" + lr.getMetadata().getName() + "\n");
+        w.w(0, "Namespace:\t" + lr.getMetadata().getNamespace() + "\n");
+        w.w(0, "Type\tResource\tMin\tMax\tDefault Request\tDefault Limit\tMax Limit/Request Ratio\n");
+        w.w(0, "----\t--------\t---\t---\t---------------\t-------------\t-----------------------\n");
+        for (LimitRangeItem it : lr.getSpec().getLimits() == null ? List.<LimitRangeItem>of() : lr.getSpec().getLimits()) {
+            Set<String> res = new TreeSet<>();
+            for (Map<String, Quantity> m : Arrays.asList(it.getMin(), it.getMax(), it.getDefaultRequest(), it.getDefault(), it.getMaxLimitRequestRatio()))
+                if (m != null) res.addAll(m.keySet());
+            for (String r : res)
+                w.w(0, it.getType() + "\t" + r + "\t" + q(it.getMin(), r) + "\t" + q(it.getMax(), r) + "\t" + q(it.getDefaultRequest(), r)
+                        + "\t" + q(it.getDefault(), r) + "\t" + q(it.getMaxLimitRequestRatio(), r) + "\n");
+        }
+    }
+
+    private static String q(Map<String, Quantity> m, String key) {
+        return m == null || m.get(key) == null ? "-" : m.get(key).toString();
+    }
+
     private void generic(W w, HasMetadata o) {
         var m = o.getMetadata();
         w.w(0, "Name:\t" + m.getName() + "\n");

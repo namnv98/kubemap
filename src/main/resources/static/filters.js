@@ -7,10 +7,10 @@
  */
 const FILTER_GROUPS = [
   ['Mạng', ['Ingress', 'Service', 'NetworkPolicy', 'IngressClass']],
-  ['Workload', ['Deployment', 'StatefulSet', 'DaemonSet', 'CronJob', 'Job', 'ReplicaSet', 'Pod', 'HorizontalPodAutoscaler', 'PodDisruptionBudget']],
-  ['Lưu trữ & cấu hình', ['PersistentVolumeClaim', 'PersistentVolume', 'StorageClass', 'ConfigMap', 'Secret']],
-  ['Quyền', ['ServiceAccount', 'RBAC']],
-  ['Cụm', ['Node']],
+  ['Workload', ['Deployment', 'StatefulSet', 'DaemonSet', 'CronJob', 'Job', 'ReplicaSet', 'ReplicationController', 'Pod', 'HorizontalPodAutoscaler', 'PodDisruptionBudget']],
+  ['Lưu trữ & cấu hình', ['PersistentVolumeClaim', 'PersistentVolume', 'StorageClass', 'ConfigMap', 'Secret', 'CSI']],
+  ['Quyền & chính sách', ['ServiceAccount', 'RBAC', 'Quota', 'Admission', 'CertificateSigningRequest']],
+  ['Cụm', ['Node', 'Scheduling', 'Lease']],
   ['Khác', ['Custom']],
 ];
 const WORKLOAD_CORE = ['Deployment', 'StatefulSet', 'DaemonSet', 'CronJob', 'Job', 'Pod'];
@@ -80,6 +80,7 @@ function renderFilters() {
     <div class="seg fpresets" role="group" aria-label="Bộ lọc nhanh">${FILTER_PRESETS.map(([id, label, tip]) =>
       `<button data-preset="${id}" class="${preset === id ? 'on' : ''}" title="${esc(tip)}">${label}</button>`).join('')}</div>
     <div class="fpills">${pills || '<span class="fnone">Không loại nào được hiển thị</span>'}</div>
+    <label class="fswitch" title="Cho các đường nối nét đứt chạy theo chiều traffic"><input type="checkbox" id="flowSw" ${typeof flow !== 'undefined' && flow.on ? 'checked' : ''}><span class="sw"></span>Chuyển động</label>
     <div class="fmenu ${flt.open ? 'open' : ''}">
       <button class="fbtn" id="fmenuBtn" aria-haspopup="true" aria-expanded="${flt.open}">
         <svg class="i" viewBox="0 0 24 24"><path d="M4 6h16M7 12h10M10 18h4"/></svg>Loại <b>${onKinds.length}/${CHIPS.length}</b>
@@ -102,6 +103,7 @@ function renderFilters() {
   if (hadFocus) { const i = $('fQ'); i.focus(); i.setSelectionRange(caret, caret); }
 }
 
+$('filterbar').addEventListener('change', e => { if (e.target.id === 'flowSw' && typeof setFlow === 'function') setFlow(e.target.checked); });
 $('filterbar').addEventListener('click', e => {
   const t = e.target;
   if (t.closest('#fmenuBtn')) { e.stopPropagation(); flt.open = !flt.open; renderFilters(); if (flt.open) $('fQ')?.focus(); return; }
@@ -124,3 +126,18 @@ $('filterbar').addEventListener('input', e => { if (e.target.id === 'fQ') { flt.
 $('filterbar').addEventListener('keydown', e => { if (e.key === 'Escape' && flt.open) { e.stopPropagation(); flt.open = false; renderFilters(); $('fmenuBtn').focus(); } });
 document.addEventListener('click', e => { if (flt.open && !e.target.closest('.fmenu')) { flt.open = false; renderFilters(); } });
 renderFilters();
+
+/* the kind filter bar ("Hiển thị") only applies to the graph: hide it whenever a full-canvas view (grid, timeline, helm,
+ * security…) is open. Watching the views' hidden attribute covers every way of switching, including view → view. */
+const syncFilterbar = () => {
+  const graph = !document.querySelector('.app-view:not([hidden])');
+  $('filterbar').hidden = !graph;
+  // the "Đồ thị" tab is on when no other view is
+  $('graphBtn').classList.toggle('on', graph); $('graphBtn').setAttribute('aria-selected', String(graph));
+  // the left menu marks the open view; only on a real view change (popovers inside views toggle hidden too)
+  const open = [...document.querySelectorAll('.app-view:not([hidden])')].map(v => v.id).join();
+  if (open !== syncFilterbar.last) { syncFilterbar.last = open; if (typeof renderGrid === 'function') renderGrid(); if (graph && state.graphStale) render(false); }
+};
+$('graphBtn').onclick = () => { if (document.querySelector('.app-view:not([hidden])')) showGraph(); };
+new MutationObserver(syncFilterbar).observe(document.querySelector('main') || document.body, { attributes: true, attributeFilter: ['hidden'], subtree: true });
+syncFilterbar();

@@ -13,6 +13,11 @@ import java.lang.reflect.Proxy;
 public class K8sStudioApplication {
 
     public static void main(String[] args) {
+        // `java -jar kubemap.jar hash-password` → bcrypt hash for k8s-studio.auth.users (no Spring, no cluster)
+        if (args.length > 0 && "hash-password".equals(args[0])) {
+            io.namnv.k8sstudio.auth.SecurityConfig.hashPasswordCli(args);
+            return;
+        }
         SpringApplication.run(K8sStudioApplication.class, args);
     }
 

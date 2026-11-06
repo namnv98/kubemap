@@ -32,8 +32,9 @@ public class PortForwardService {
 
     public record PortOption(int port, String name, String protocol, String note) {}
 
+    /** token: secret for reaching this forward from another machine (HTTP proxy / TCP tunnel on the remote-access port) */
     public record Forward(String id, String kind, String namespace, String name, String pod, int port, int targetPort, int localPort,
-                          long started, boolean alive, String error) {}
+                          long started, boolean alive, String error, String token) {}
 
     private record Entry(Forward f, LocalPortForward lpf) {}
 
@@ -84,7 +85,7 @@ public class PortForwardService {
             throw new IllegalStateException("Không mở được port-forward: " + root(e));
         }
         String id = UUID.randomUUID().toString().substring(0, 8);
-        Forward f = new Forward(id, kind, ns, name, pod.getMetadata().getName(), port, target, lpf.getLocalPort(), System.currentTimeMillis(), true, null);
+        Forward f = new Forward(id, kind, ns, name, pod.getMetadata().getName(), port, target, lpf.getLocalPort(), System.currentTimeMillis(), true, null, newToken());
         forwards.put(id, new Entry(f, lpf));
         log.info("port-forward {} 127.0.0.1:{} -> {}/{}:{}", id, lpf.getLocalPort(), ns, pod.getMetadata().getName(), target);
         return f;
@@ -97,13 +98,33 @@ public class PortForwardService {
             if (e.lpf().errorOccurred()) {
                 var t = !e.lpf().getClientThrowables().isEmpty() ? e.lpf().getClientThrowables().iterator().next()
                         : !e.lpf().getServerThrowables().isEmpty() ? e.lpf().getServerThrowables().iterator().next() : null;
-                err = t == null ? "lỗi" : root(t);
+                err = t == null ? "lỗi" : explain(root(t), e.f());
             }
             Forward f = e.f();
-            out.add(new Forward(f.id(), f.kind(), f.namespace(), f.name(), f.pod(), f.port(), f.targetPort(), f.localPort(), f.started(), e.lpf().isAlive(), err));
+            out.add(new Forward(f.id(), f.kind(), f.namespace(), f.name(), f.pod(), f.port(), f.targetPort(), f.localPort(), f.started(), e.lpf().isAlive(), err, f.token()));
         }
         out.sort(Comparator.comparingLong(Forward::started));
         return out;
+    }
+
+    /**
+     * The loopback port of forward {@code id} if {@code token} is its secret and it is still open.
+     * Constant-time comparison, so the token can't be guessed byte by byte from response times.
+     */
+    public OptionalInt authorize(String id, String token) {
+        Entry e = id == null ? null : forwards.get(id);
+        if (e == null || token == null || !e.lpf().isAlive()) return OptionalInt.empty();
+        boolean ok = java.security.MessageDigest.isEqual(e.f().token().getBytes(java.nio.charset.StandardCharsets.UTF_8),
+                token.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        return ok ? OptionalInt.of(e.f().localPort()) : OptionalInt.empty();
+    }
+
+    private static final java.security.SecureRandom RANDOM = new java.security.SecureRandom();
+
+    private static String newToken() {
+        byte[] b = new byte[24]; // 192 bits
+        RANDOM.nextBytes(b);
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(b);
     }
 
     public void stop(String id) {
@@ -167,6 +188,21 @@ public class PortForwardService {
     private static int freePort() {
         try (ServerSocket s = new ServerSocket(0, 1, InetAddress.getLoopbackAddress())) { return s.getLocalPort(); }
         catch (IOException e) { throw new IllegalStateException("Không tìm được cổng trống"); }
+    }
+
+    /**
+     * Kubernetes' port-forward errors are long and low-level; the common ones get a sentence saying what to check.
+     * They are per connection: the forward itself keeps working (the next connection may succeed).
+     */
+    static String explain(String raw, Forward f) {
+        String m = raw == null ? "" : raw;
+        if (m.contains("connection refused"))
+            return "Trong pod " + f.pod() + " không có tiến trình nào lắng nghe cổng " + f.targetPort()
+                    + " (connection refused). Kiểm tra container có thực sự chạy dịch vụ ở cổng đó không.";
+        if (m.contains("not found") && m.contains("pod")) return "Pod " + f.pod() + " không còn tồn tại (bị xoá hoặc tạo lại). Dừng forward rồi mở lại.";
+        if (m.contains("container not running") || m.contains("not running")) return "Container trong pod " + f.pod() + " không chạy.";
+        if (m.contains("timeout") || m.contains("timed out")) return "Hết thời gian chờ kết nối tới pod " + f.pod() + ".";
+        return m;
     }
 
     private static String ios(IntOrString v) { return v == null ? "" : v.getIntVal() != null ? String.valueOf(v.getIntVal()) : v.getStrVal(); }

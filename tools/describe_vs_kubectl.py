@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Compare K8s Studio /api/describe (app on localhost:8080) with `kubectl describe`, line by line.
+"""Compare Kubemap /api/describe (app on localhost:8080) with `kubectl describe`, line by line.
 Run against the cluster the app is connected to, with tools/testdata/*.yaml applied.
 usage: cmp.py KIND NS NAME [-v]   (NS '-' for cluster-scoped); or cmp.py --all"""
 import difflib, json, os, re, subprocess, sys, urllib.parse, urllib.request

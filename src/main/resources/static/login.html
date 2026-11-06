@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Đăng nhập · Kubemap</title>
+<style>
+  :root { --bg: #0b0e14; --surface: #11151d; --surface-2: #171c26; --border: #232a37; --border-strong: #2f3848; --text: #e6eaf2;
+    --muted: #a1aabb; --faint: #828b9e; --accent: #7b97ff; --accent-2: #a371f7; --accent-soft: rgba(123,151,255,.16); --error: #f26464; --ok: #22c55e; --warn: #f5a524;
+    --shadow: 0 24px 60px -20px rgba(0,0,0,.6); color-scheme: dark; }
+  @media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) { --bg: #f4f6fb; --surface: #fff; --surface-2: #f3f5f9; --border: #e3e6ee;
+    --border-strong: #d2d7e2; --text: #161c2b; --muted: #4f5869; --faint: #6b7385; --accent: #3b57d6; --accent-2: #7c4dda; --accent-soft: rgba(59,87,214,.10);
+    --error: #c42727; --ok: #13793a; --warn: #a15c00; --shadow: 0 24px 60px -24px rgba(20,30,60,.25); color-scheme: light; } }
+  :root[data-theme="light"] { --bg: #f4f6fb; --surface: #fff; --surface-2: #f3f5f9; --border: #e3e6ee; --border-strong: #d2d7e2; --text: #161c2b;
+    --muted: #4f5869; --faint: #6b7385; --accent: #3b57d6; --accent-2: #7c4dda; --accent-soft: rgba(59,87,214,.10); --error: #c42727; --ok: #13793a; --warn: #a15c00;
+    --shadow: 0 24px 60px -24px rgba(20,30,60,.25); color-scheme: light; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; min-height: 100%; background: var(--bg); color: var(--text); font: 14px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  body { min-height: 100vh; display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(380px, 1fr); }
+  /* ---- left: showcase ---- */
+  .show { position: relative; overflow: hidden; color: #eef1ff; padding: 96px 52px 52px; display: flex; flex-direction: column; justify-content: center; gap: 28px;
+    background: radial-gradient(700px 500px at 0% 0%, #4a5ee8 0%, transparent 60%), radial-gradient(600px 500px at 100% 100%, #8a4fe0 0%, transparent 60%), #141a3a; }
+  .show::before { content: ''; position: absolute; inset: 0; pointer-events: none; opacity: .5;
+    background: radial-gradient(rgba(255,255,255,.16) 1.1px, transparent 1.2px) 0 0 / 22px 22px;
+    mask-image: linear-gradient(180deg, #000 0%, transparent 85%); -webkit-mask-image: linear-gradient(180deg, #000 0%, transparent 85%); }
+  .show > * { position: relative; }
+  .show > .sbrand { position: absolute; top: 40px; left: 52px; }
+  .sbrand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 16px; }
+  .sbrand .logo { width: 34px; height: 34px; border-radius: 10px; background: rgba(255,255,255,.14); box-shadow: inset 0 0 0 1px rgba(255,255,255,.22); }
+  .sbrand .logo svg { width: 20px; height: 20px; }
+  .show h2 { margin: 12px 0 0; font-size: clamp(26px, 2.6vw, 34px); line-height: 1.2; font-weight: 750; letter-spacing: -.02em; max-width: 520px; }
+  .show h2 em { font-style: normal; background: linear-gradient(90deg, #a9bbff, #e0b8ff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .show .lead { margin: -14px 0 0; color: rgba(238,241,255,.75); font-size: 14.5px; max-width: 480px; }
+  /* mini relationship map */
+  .map { width: 100%; max-width: 560px; border-radius: 16px; background: rgba(9,12,32,.42); box-shadow: inset 0 0 0 1px rgba(255,255,255,.1), 0 30px 60px -30px rgba(0,0,0,.6);
+    backdrop-filter: blur(6px); padding: 14px; }
+  .map .bar { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-size: 11.5px; color: rgba(238,241,255,.7); }
+  .map .bar i { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,.25); } .map .bar i:nth-child(1) { background: #ff6b6b; } .map .bar i:nth-child(2) { background: #f5c044; } .map .bar i:nth-child(3) { background: #3ddc84; }
+  .map .bar b { margin-left: 8px; font-weight: 600; color: #eef1ff; } .map .bar .chip { margin-left: auto; padding: 1px 8px; border-radius: 9px; background: rgba(61,220,132,.16); color: #7ff0b0; }
+  .map svg { width: 100%; height: auto; display: block; stroke-width: 1.6; }
+  .map .edge { stroke: rgba(170,185,255,.35); fill: none; }
+  .map .flow { stroke: #b9c6ff; fill: none; stroke-dasharray: 4 10; animation: flow 1.6s linear infinite; }
+  @keyframes flow { to { stroke-dashoffset: -28; } }
+  .map .card rect { fill: rgba(255,255,255,.07); stroke: rgba(255,255,255,.18); }
+  .map .card text { fill: #eef1ff; font: 600 10.5px system-ui, sans-serif; stroke: none; }
+  .map .card .k { fill: rgba(238,241,255,.6); font-weight: 500; font-size: 9px; }
+  .map .dot { stroke: none; }
+  .feats { list-style: none; margin: 4px 0 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 14px 22px; max-width: 560px; }
+  .feats li { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; color: rgba(238,241,255,.8); line-height: 1.45; }
+  .feats li b { display: block; color: #fff; font-weight: 650; font-size: 13.5px; }
+  .feats .fi { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; flex: none; background: rgba(255,255,255,.1); box-shadow: inset 0 0 0 1px rgba(255,255,255,.14); }
+  .feats .fi svg { width: 15px; height: 15px; }
+  /* ---- right: the form ---- */
+  .side { position: relative; display: grid; place-items: center; padding: 32px 24px; }
+  .side::before { content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+    background: radial-gradient(420px 300px at 80% 10%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 70%); }
+  main { width: min(380px, 100%); }
+  .brand { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; margin-bottom: 24px; }
+  .logo { width: 48px; height: 48px; border-radius: 14px; display: grid; place-items: center; color: #fff;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2)); box-shadow: 0 10px 28px -8px color-mix(in srgb, var(--accent) 60%, transparent); }
+  svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+  .logo svg { width: 26px; height: 26px; }
+  .brand .logo { display: none; margin-bottom: 8px; }
+  .brand h1 { margin: 0; font-size: 26px; font-weight: 750; letter-spacing: -.02em; }
+  .brand p { margin: 0; color: var(--muted); font-size: 14px; }
+  form { display: flex; flex-direction: column; gap: 16px; }
+  .field { display: flex; flex-direction: column; gap: 7px; }
+  .field > span { font-size: 12.5px; font-weight: 600; color: var(--muted); }
+  .inp { position: relative; display: flex; align-items: center; }
+  .inp > svg { position: absolute; left: 12px; width: 16px; height: 16px; color: var(--faint); pointer-events: none; }
+  input[type=text], input[type=password] { width: 100%; height: 42px; padding: 0 12px 0 38px; border-radius: 10px; border: 1px solid var(--border-strong);
+    background: var(--surface-2); color: var(--text); font: inherit; font-size: 14px; transition: border-color .12s, box-shadow .12s; }
+  input[type=password], .inp.pw input { padding-right: 44px; }
+  input::placeholder { color: var(--faint); }
+  input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); background: var(--surface); }
+  .err input { border-color: color-mix(in srgb, var(--error) 60%, var(--border)); }
+  .eye { position: absolute; right: 6px; width: 32px; height: 32px; display: grid; place-items: center; border: 0; border-radius: 8px; background: none;
+    color: var(--faint); cursor: pointer; }
+  .eye:hover { color: var(--text); background: var(--accent-soft); }
+  .eye:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .caps { display: none; align-items: center; gap: 6px; font-size: 12px; color: var(--warn); }
+  .caps.on { display: flex; } .caps svg { width: 14px; height: 14px; }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: -2px; }
+  .check { display: inline-flex; align-items: center; gap: 9px; font-size: 13px; color: var(--text); cursor: pointer; user-select: none; }
+  .check input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+  .check .box { width: 18px; height: 18px; border-radius: 5px; border: 1.5px solid var(--border-strong); background: var(--surface-2); display: grid; place-items: center;
+    transition: background .12s, border-color .12s; }
+  .check .box svg { width: 12px; height: 12px; stroke-width: 3; color: #fff; opacity: 0; }
+  .check input:checked + .box { background: var(--accent); border-color: var(--accent); } .check input:checked + .box svg { opacity: 1; }
+  .check input:focus-visible + .box { box-shadow: 0 0 0 4px var(--accent-soft); }
+  .hint { font-size: 12px; color: var(--faint); }
+  button[type=submit] { position: relative; height: 44px; border: 0; border-radius: 10px; color: #fff; font: inherit; font-size: 14.5px; font-weight: 650; cursor: pointer;
+    background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 70%, var(--accent-2))); box-shadow: 0 8px 20px -10px var(--accent);
+    display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 4px; transition: filter .12s, transform .06s; }
+  button[type=submit]:hover { filter: brightness(1.08); } button[type=submit]:active { transform: translateY(1px); }
+  button[type=submit]:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+  button[type=submit][disabled] { cursor: default; filter: saturate(.7) brightness(.95); }
+  .spin { width: 16px; height: 16px; border-radius: 50%; border: 2px solid rgba(255,255,255,.4); border-top-color: #fff; animation: s .7s linear infinite; display: none; }
+  .busy .spin { display: block; } @keyframes s { to { transform: rotate(360deg); } }
+  .msg { display: none; align-items: flex-start; gap: 9px; padding: 10px 12px; border-radius: 10px; font-size: 13px; line-height: 1.45; }
+  .msg svg { width: 16px; height: 16px; margin-top: 1px; }
+  .msg.err { display: flex; color: var(--error); background: color-mix(in srgb, var(--error) 9%, transparent); border: 1px solid color-mix(in srgb, var(--error) 28%, transparent); }
+  .msg.ok { display: flex; color: var(--ok); background: color-mix(in srgb, var(--ok) 9%, transparent); border: 1px solid color-mix(in srgb, var(--ok) 28%, transparent); }
+  .foot { margin-top: 22px; font-size: 12px; color: var(--faint); display: flex; gap: 8px; align-items: flex-start; }
+  .foot svg { width: 14px; height: 14px; margin-top: 2px; }
+  .theme { position: fixed; top: 16px; right: 16px; width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface);
+    color: var(--muted); display: grid; place-items: center; cursor: pointer; }
+  .theme:hover { color: var(--text); }
+  @media (max-width: 960px) { body { grid-template-columns: 1fr; } .show { display: none; } .brand { align-items: center; text-align: center; } .brand .logo { display: grid; }
+    .foot { justify-content: center; text-align: center; } }
+  @media (max-width: 420px) { .brand h1 { font-size: 22px; } }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation-duration: 0s !important; } }
+</style>
+</head>
+<body>
+<button class="theme" id="theme" type="button" title="Đổi giao diện sáng/tối" aria-label="Đổi giao diện sáng/tối"><svg viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button>
+<section class="show" aria-hidden="true">
+  <div class="sbrand"><span class="logo"><svg viewBox="0 0 24 24"><path d="M12 2.8l8 4.6v9.2l-8 4.6-8-4.6V7.4z"/><circle cx="12" cy="12" r="3"/><path d="M12 2.8V9M12 15v6.2M4 7.4l5.4 3.1M14.6 13.5L20 16.6M20 7.4l-5.4 3.1M9.4 13.5L4 16.6"/></svg></span>Kubemap</div>
+  <h2>Toàn bộ cluster, <em>nhìn là hiểu.</em></h2>
+  <p class="lead">Xem tài nguyên dưới dạng sơ đồ quan hệ hoặc bảng, theo dõi sự kiện, quản lý Helm và kiểm tra bảo mật — ngay trên trình duyệt.</p>
+  <div class="map">
+    <div class="bar"><i></i><i></i><i></i><b>shop · namespace</b><span class="chip">● 12 ổn định</span></div>
+    <svg viewBox="0 0 520 210">
+      <path class="edge" d="M118 46 C160 46 160 46 200 46"/><path class="flow" d="M118 46 C160 46 160 46 200 46"/>
+      <path class="edge" d="M318 46 C350 46 350 46 382 46"/><path class="flow" d="M318 46 C350 46 350 46 382 46"/>
+      <path class="edge" d="M440 64 C440 100 300 96 260 132"/><path class="flow" d="M440 64 C440 100 300 96 260 132"/>
+      <path class="edge" d="M440 64 C440 110 440 110 440 132"/><path class="flow" d="M440 64 C440 110 440 110 440 132"/>
+      <path class="edge" d="M440 64 C440 100 120 96 80 132"/>
+      <g class="card"><rect x="8" y="24" width="110" height="44" rx="9"/><circle class="dot" cx="22" cy="40" r="4" fill="#a78bfa"/><text x="32" y="43">shop</text><text class="k" x="18" y="58">Ingress</text></g>
+      <g class="card"><rect x="200" y="24" width="118" height="44" rx="9"/><circle class="dot" cx="214" cy="40" r="4" fill="#60a5fa"/><text x="224" y="43">frontend</text><text class="k" x="210" y="58">Service · 80/TCP</text></g>
+      <g class="card"><rect x="382" y="24" width="118" height="44" rx="9"/><circle class="dot" cx="396" cy="40" r="4" fill="#22d3ee"/><text x="406" y="43">frontend</text><text class="k" x="392" y="58">Deployment · 3/3</text></g>
+      <g class="card"><rect x="20" y="132" width="120" height="44" rx="9"/><circle class="dot" cx="34" cy="148" r="4" fill="#3ddc84"/><text x="44" y="151">frontend-7d9…a</text><text class="k" x="30" y="166">Pod · Running</text></g>
+      <g class="card"><rect x="200" y="132" width="120" height="44" rx="9"/><circle class="dot" cx="214" cy="148" r="4" fill="#3ddc84"/><text x="224" y="151">frontend-7d9…b</text><text class="k" x="210" y="166">Pod · Running</text></g>
+      <g class="card"><rect x="380" y="132" width="120" height="44" rx="9"/><circle class="dot" cx="394" cy="148" r="4" fill="#f5c044"/><text x="404" y="151">frontend-7d9…c</text><text class="k" x="390" y="166">Pod · 2 restart</text></g>
+    </svg>
+  </div>
+  <ul class="feats">
+    <li><span class="fi"><svg viewBox="0 0 24 24"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="8" r="2.5"/><circle cx="9" cy="18" r="2.5"/><path d="M8.3 7.2l7.4.6M7 8.4l1.4 7.2M16.3 9.9l-5.6 6.4"/></svg></span><span><b>Sơ đồ & bảng</b>Quan hệ Ingress → Service → Pod, bảng kiểu k9s.</span></li>
+    <li><span class="fi"><svg viewBox="0 0 24 24"><path d="M3 12h4l3-7 4 14 3-7h4"/></svg></span><span><b>Sự kiện & log</b>Timeline events, log và shell vào pod.</span></li>
+    <li><span class="fi"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><circle cx="12" cy="12" r="8"/><path d="M12 1.5v4M12 18.5v4M1.5 12h4M18.5 12h4"/></svg></span><span><b>Helm</b>Release, lịch sử, rollback và cài chart.</span></li>
+    <li><span class="fi"><svg viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg></span><span><b>Kiểm tra bảo mật</b>Cấu hình, truy cập từ ngoài, ai làm được gì.</span></li>
+  </ul>
+</section>
+<div class="side">
+<main>
+  <div class="brand">
+    <span class="logo"><svg viewBox="0 0 24 24"><path d="M12 2.8l8 4.6v9.2l-8 4.6-8-4.6V7.4z"/><circle cx="12" cy="12" r="3"/><path d="M12 2.8V9M12 15v6.2M4 7.4l5.4 3.1M14.6 13.5L20 16.6M20 7.4l-5.4 3.1M9.4 13.5L4 16.6"/></svg></span>
+    <h1>Chào mừng trở lại</h1>
+    <p>Đăng nhập để tiếp tục vào Kubemap.</p>
+  </div>
+  <form method="post" action="/login" id="form" novalidate>
+    <div class="msg" id="msg" role="alert"></div>
+    <label class="field"><span>Tên đăng nhập</span>
+      <span class="inp"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg>
+        <input type="text" name="username" id="user" autocomplete="username" autocapitalize="off" spellcheck="false" placeholder="vd. admin" required></span></label>
+    <label class="field"><span>Mật khẩu</span>
+      <span class="inp pw"><svg viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+        <input type="password" name="password" id="pw" autocomplete="current-password" placeholder="••••••••" required>
+        <button class="eye" type="button" id="eye" aria-label="Hiện mật khẩu" title="Hiện mật khẩu"><svg viewBox="0 0 24 24" id="eyeIc"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button></span>
+      <span class="caps" id="caps"><svg viewBox="0 0 24 24"><path d="M12 4l8 8h-5v8H9v-8H4z"/></svg>Caps Lock đang bật</span></label>
+    <div class="row">
+      <label class="check"><input type="checkbox" name="remember" id="remember" value="true"><span class="box"><svg viewBox="0 0 24 24"><path d="M5 12l5 5L20 7"/></svg></span>Ghi nhớ đăng nhập</label>
+      <span class="hint" id="rememberHint">30 ngày</span>
+    </div>
+    <button type="submit" id="go"><span class="spin"></span><span id="goT">Đăng nhập</span></button>
+  </form>
+  <p class="foot"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg><span id="foot">Không tích "Ghi nhớ": phiên kết thúc sau 12 giờ hoặc khi app khởi động lại. Tài khoản do quản trị viên cấp.</span></p>
+</main>
+</div>
+<script>
+  const $ = id => document.getElementById(id);
+  const store = { get: k => { try { return localStorage.getItem('k8s-studio.' + k); } catch { return null; } },
+    set: (k, v) => { try { v == null ? localStorage.removeItem('k8s-studio.' + k) : localStorage.setItem('k8s-studio.' + k, v); } catch {} } };
+  const ICON = { err: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>', ok: '<svg viewBox="0 0 24 24"><path d="M5 12l5 5L20 7"/></svg>' };
+  const say = (kind, text) => { $('msg').className = 'msg ' + kind; $('msg').innerHTML = ICON[kind] + '<span></span>'; $('msg').lastChild.textContent = text; };
+
+  // theme: same key as the app
+  const t = store.get('theme'); if (t) document.documentElement.dataset.theme = t;
+  $('theme').onclick = () => {
+    const dark = (document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')) === 'dark';
+    document.documentElement.dataset.theme = dark ? 'light' : 'dark'; store.set('theme', dark ? 'light' : 'dark');
+  };
+
+  // "ghi nhớ": the choice and the user name are kept in this browser; the password is left to the browser's password manager
+  const lastUser = store.get('login.user'), rem = store.get('login.remember') === '1';
+  if (lastUser) $('user').value = lastUser;
+  $('remember').checked = rem;
+  (lastUser ? $('pw') : $('user')).focus();
+
+  const q = new URLSearchParams(location.search);
+  if (q.has('error')) { say('err', 'Sai tên đăng nhập hoặc mật khẩu.'); $('form').classList.add('err'); $('pw').focus(); }
+  else if (q.has('logout')) say('ok', 'Đã đăng xuất.');
+  else if (q.has('expired')) say('err', 'Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại.');
+
+  $('eye').onclick = () => {
+    const show = $('pw').type === 'password';
+    $('pw').type = show ? 'text' : 'password';
+    $('eye').title = $('eye').ariaLabel = show ? 'Ẩn mật khẩu' : 'Hiện mật khẩu';
+    $('eyeIc').innerHTML = show ? '<path d="M3 3l18 18M10.6 5.1A10 10 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-3.2 4.1M6.6 6.6C3.9 8.4 2 12 2 12s3.5 7 10 7a9.7 9.7 0 0 0 5.4-1.6M9.9 9.9a3 3 0 0 0 4.2 4.2"/>'
+      : '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>';
+    $('pw').focus();
+  };
+  const caps = e => { if (e.getModifierState) $('caps').classList.toggle('on', e.getModifierState('CapsLock')); };
+  $('pw').addEventListener('keydown', caps); $('pw').addEventListener('keyup', caps);
+  $('pw').addEventListener('blur', () => $('caps').classList.remove('on'));
+  $('form').addEventListener('input', () => { $('form').classList.remove('err'); if ($('msg').classList.contains('err')) $('msg').className = 'msg'; });
+
+  $('form').addEventListener('submit', e => {
+    const u = $('user').value.trim();
+    if (!u || !$('pw').value) { e.preventDefault(); say('err', 'Nhập tên đăng nhập và mật khẩu.'); (u ? $('pw') : $('user')).focus(); return; }
+    $('user').value = u;
+    store.set('login.remember', $('remember').checked ? '1' : '0');
+    store.set('login.user', $('remember').checked ? u : null);
+    $('go').disabled = true; $('go').classList.add('busy'); $('goT').textContent = 'Đang đăng nhập…';
+  });
+  // back from the bfcache after a failed attempt: re-enable the button
+  addEventListener('pageshow', () => { $('go').disabled = false; $('go').classList.remove('busy'); $('goT').textContent = 'Đăng nhập'; });
+</script>
+</body>
+</html>

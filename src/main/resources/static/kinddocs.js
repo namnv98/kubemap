@@ -1,0 +1,291 @@
+/* What each resource kind is, for the (i) popup next to the grid title.
+ * KIND_DOCS[kind] = { what, use: [...], tips: [...], rel: [...kinds], doc: path under kubernetes.io/docs/ or full URL } */
+'use strict';
+
+const K8S_DOCS = 'https://kubernetes.io/docs/';
+const KIND_DOCS = {
+  /* ---------- workload ---------- */
+  Pod: {
+    what: 'Đơn vị nhỏ nhất Kubernetes chạy: một hoặc vài container dùng chung địa chỉ IP, cổng mạng và volume, luôn được đặt cùng nhau trên một node. Pod là "dùng xong bỏ": khi chết nó không tự sống lại, mà được controller (Deployment, StatefulSet…) tạo Pod mới thay thế, với tên và IP mới.',
+    use: ['Xem container nào đang chạy, ở node nào, đã restart bao nhiêu lần', 'Đọc log, mở terminal vào container để gỡ lỗi', 'Hiếm khi tạo tay: hãy để Deployment / Job quản lý'],
+    tips: ['CrashLoopBackOff: container khởi động rồi chết liên tục, xem log của lần chạy trước', 'Pending: chưa xếp được lên node (thiếu CPU/RAM, PVC chưa bind, taint…), xem Events', 'Xoá Pod do Deployment quản lý sẽ được tạo lại ngay: đó là cách "restart" nhanh'],
+    rel: ['Deployment', 'ReplicaSet', 'StatefulSet', 'DaemonSet', 'Job', 'Service', 'Node', 'ConfigMap', 'Secret', 'PersistentVolumeClaim'],
+    doc: 'concepts/workloads/pods/',
+  },
+  Deployment: {
+    what: 'Cách chuẩn để chạy ứng dụng không trạng thái (stateless). Bạn khai báo image, số bản sao (replicas) và cấu hình; Deployment tạo ReplicaSet, ReplicaSet giữ đúng số Pod. Đổi image hay cấu hình sẽ được rolling update: Pod mới lên dần, Pod cũ tắt dần, không gián đoạn.',
+    use: ['Web, API, worker… mọi thứ mà các bản sao giống hệt nhau', 'Scale số bản sao, rollout phiên bản mới, rollback khi lỗi'],
+    tips: ['Rollout kẹt thường do Pod mới không Ready (readinessProbe, image sai, thiếu tài nguyên)', 'Mỗi lần đổi template sinh một ReplicaSet mới; ReplicaSet cũ giữ lại để rollback', 'Restart = đổi annotation trong template, Pod được thay lần lượt'],
+    rel: ['ReplicaSet', 'Pod', 'Service', 'HorizontalPodAutoscaler', 'PodDisruptionBudget', 'ConfigMap', 'Secret'],
+    doc: 'concepts/workloads/controllers/deployment/',
+  },
+  ReplicaSet: {
+    what: 'Giữ cho luôn có đúng N Pod giống nhau đang chạy: thiếu thì tạo thêm, thừa thì xoá bớt. Gần như luôn do Deployment tạo và quản lý; mỗi phiên bản của Deployment là một ReplicaSet.',
+    use: ['Xem lịch sử các phiên bản của Deployment (ReplicaSet cũ có 0 replica)', 'Hiểu vì sao Pod bị tạo lại'],
+    tips: ['Đừng sửa ReplicaSet do Deployment quản lý: Deployment sẽ ghi đè lại', 'Số lượng ReplicaSet cũ được giữ do revisionHistoryLimit của Deployment'],
+    rel: ['Deployment', 'Pod'],
+    doc: 'concepts/workloads/controllers/replicaset/',
+  },
+  StatefulSet: {
+    what: 'Chạy ứng dụng có trạng thái (database, Kafka, Elasticsearch…). Khác Deployment: mỗi Pod có tên cố định theo thứ tự (db-0, db-1…), có ổ đĩa riêng (PVC từ volumeClaimTemplates) đi theo nó, và được tạo/xoá/cập nhật lần lượt.',
+    use: ['Ứng dụng cần định danh ổn định và dữ liệu riêng cho từng bản sao', 'Cụm cần thứ tự khởi động (primary trước, replica sau)'],
+    tips: ['Cần một headless Service (clusterIP: None) để mỗi Pod có DNS riêng: db-0.db.ns.svc', 'Xoá StatefulSet hay scale xuống KHÔNG xoá PVC: dữ liệu vẫn còn', 'Pod kẹt thì các Pod sau cũng không được cập nhật'],
+    rel: ['Pod', 'PersistentVolumeClaim', 'Service', 'PodDisruptionBudget'],
+    doc: 'concepts/workloads/controllers/statefulset/',
+  },
+  DaemonSet: {
+    what: 'Chạy đúng một Pod trên mỗi node (hoặc mỗi node thoả điều kiện). Node mới vào cluster sẽ tự có Pod đó; node rời đi thì Pod bị dọn.',
+    use: ['Agent cho từng node: thu log (Fluent Bit), giám sát (node-exporter), mạng (CNI, kube-proxy), lưu trữ (CSI)'],
+    tips: ['Pod không lên trên một số node: kiểm tra taint của node và tolerations của DaemonSet', 'nodeSelector / affinity giới hạn tập node chạy'],
+    rel: ['Pod', 'Node'],
+    doc: 'concepts/workloads/controllers/daemonset/',
+  },
+  Job: {
+    what: 'Chạy Pod cho tới khi hoàn thành rồi dừng (khác Deployment chạy mãi). Nếu Pod lỗi, Job thử lại theo backoffLimit. Có thể chạy song song nhiều Pod và yêu cầu số lần thành công.',
+    use: ['Tác vụ một lần: migrate database, xử lý batch, backup'],
+    tips: ['Failed: đã thử quá backoffLimit, xem log Pod cuối', 'ttlSecondsAfterFinished để tự dọn Job xong', 'Job do CronJob tạo mang tên CronJob + dấu thời gian'],
+    rel: ['CronJob', 'Pod'],
+    doc: 'concepts/workloads/controllers/job/',
+  },
+  CronJob: {
+    what: 'Tạo Job theo lịch dạng cron (vd "0 2 * * *" = 2 giờ sáng mỗi ngày). Mỗi lần đến giờ, CronJob sinh một Job mới.',
+    use: ['Tác vụ định kỳ: backup, dọn dẹp, gửi báo cáo, đồng bộ dữ liệu'],
+    tips: ['Giờ tính theo timeZone (mặc định là giờ của controller, thường là UTC)', 'concurrencyPolicy: Forbid để lần sau không chạy khi lần trước chưa xong', 'suspend: true để tạm dừng lịch'],
+    rel: ['Job', 'Pod'],
+    doc: 'concepts/workloads/controllers/cron-jobs/',
+  },
+  ReplicationController: {
+    what: 'Tiền thân cũ của ReplicaSet: giữ N Pod giống nhau. Đã lỗi thời, chỉ còn trong các cluster/manifest rất cũ.',
+    use: ['Không nên dùng mới: thay bằng Deployment'],
+    tips: [],
+    rel: ['Deployment', 'ReplicaSet', 'Pod'],
+    doc: 'concepts/workloads/controllers/replicationcontroller/',
+  },
+  HorizontalPodAutoscaler: {
+    what: 'Tự động tăng/giảm số replicas của Deployment hoặc StatefulSet dựa trên chỉ số: CPU, RAM hoặc metric tuỳ chỉnh. Ví dụ giữ CPU trung bình ~70%, từ 2 đến 10 Pod.',
+    use: ['Ứng dụng có tải thay đổi theo giờ, theo sự kiện'],
+    tips: ['Cần metrics-server (cho CPU/RAM); thiếu thì HPA báo "unknown"', 'Container phải khai báo resources.requests thì % CPU mới tính được', 'Đừng sửa tay replicas khi đã có HPA: HPA sẽ ghi đè'],
+    rel: ['Deployment', 'StatefulSet', 'Pod'],
+    doc: 'tasks/run-application/horizontal-pod-autoscale/',
+  },
+  PodDisruptionBudget: {
+    what: 'Giới hạn số Pod của một ứng dụng được phép bị tắt cùng lúc khi có gián đoạn tự nguyện (drain node, nâng cấp cluster). Ví dụ minAvailable: 2 nghĩa là luôn còn ít nhất 2 Pod chạy.',
+    use: ['Giữ ứng dụng sống khi bảo trì node', 'Bảo vệ quorum của cụm database / etcd'],
+    tips: ['PDB quá chặt (vd minAvailable = số replicas) sẽ làm drain node bị treo', 'Không chặn được sự cố bất ngờ (node chết), chỉ chặn việc chủ động đuổi Pod'],
+    rel: ['Deployment', 'StatefulSet', 'Pod', 'Node'],
+    doc: 'concepts/workloads/pods/disruptions/',
+  },
+
+  /* ---------- network ---------- */
+  Service: {
+    what: 'Địa chỉ ổn định (IP ảo + tên DNS) đứng trước một nhóm Pod chọn theo label. Pod đến rồi đi, IP thay đổi liên tục; Service giữ nguyên và chia tải tới các Pod đang Ready.',
+    use: ['ClusterIP: gọi nhau trong cluster, tên dạng my-svc.my-ns.svc.cluster.local', 'NodePort: mở một cổng trên mọi node', 'LoadBalancer: xin load balancer của cloud để ra Internet', 'ExternalName: bí danh DNS tới dịch vụ ngoài'],
+    tips: ['Service không có endpoint: selector không khớp label Pod, hoặc Pod chưa Ready', 'targetPort phải là cổng container thực sự lắng nghe', 'Headless (clusterIP: None): DNS trả thẳng IP từng Pod, dùng cho StatefulSet'],
+    rel: ['Pod', 'Deployment', 'Ingress', 'HTTPRoute', 'NetworkPolicy'],
+    doc: 'concepts/services-networking/service/',
+  },
+  Ingress: {
+    what: 'Luật định tuyến HTTP/HTTPS từ bên ngoài vào các Service theo tên miền và đường dẫn (vd shop.example.com/api → api-svc). Bản thân Ingress chỉ là cấu hình; phải có Ingress controller (nginx, Traefik…) đọc và thực thi.',
+    use: ['Gom nhiều ứng dụng sau một địa chỉ/IP', 'Gắn chứng chỉ TLS (Secret kiểu tls) cho tên miền'],
+    tips: ['Không có ADDRESS: chưa có controller nào nhận Ingress này, kiểm tra ingressClassName', 'Lỗi 502/503: Service đích không có Pod Ready', 'Gateway API (Gateway + HTTPRoute) là thế hệ sau của Ingress'],
+    rel: ['Service', 'IngressClass', 'Secret', 'Gateway', 'HTTPRoute'],
+    doc: 'concepts/services-networking/ingress/',
+  },
+  IngressClass: {
+    what: 'Cho biết Ingress controller nào xử lý các Ingress trỏ tới class này (vd "nginx", "traefik"). Một class có thể được đánh dấu mặc định cho Ingress không ghi class.',
+    use: ['Cluster có nhiều Ingress controller (public / internal)'],
+    tips: ['Nhiều class cùng là mặc định sẽ gây nhập nhằng'],
+    rel: ['Ingress'],
+    doc: 'concepts/services-networking/ingress/#ingress-class',
+  },
+  NetworkPolicy: {
+    what: 'Tường lửa giữa các Pod: quy định Pod nào được nhận (ingress) / gửi (egress) traffic tới đâu, theo label Pod, namespace, IP và cổng. Mặc định mọi Pod nói chuyện được với nhau; khi một Pod bị một policy chọn, chỉ traffic được cho phép mới đi qua.',
+    use: ['Cô lập namespace, chỉ cho frontend gọi backend, chặn Pod ra Internet'],
+    tips: ['Cần CNI hỗ trợ (Calico, Cilium…); với CNI không hỗ trợ, policy không có tác dụng', 'Chặn egress nhớ cho phép DNS (cổng 53 tới kube-dns), nếu không mọi thứ hỏng'],
+    rel: ['Pod', 'Service'],
+    doc: 'concepts/services-networking/network-policies/',
+  },
+  Endpoints: {
+    what: 'Danh sách IP:cổng thực tế của các Pod đứng sau một Service, do Kubernetes tự cập nhật. (Bản mới hơn là EndpointSlice.)',
+    use: ['Kiểm tra Service đang trỏ tới những Pod nào'],
+    tips: ['Trống: không Pod nào vừa khớp selector vừa Ready'],
+    rel: ['Service', 'Pod'],
+    doc: 'concepts/services-networking/service/#endpoints',
+  },
+  Gateway: {
+    what: 'Thuộc Gateway API, thế hệ sau của Ingress. Gateway là "cửa vào" cụ thể: lắng nghe cổng/giao thức/tên miền nào, dùng chứng chỉ nào. Các Route (HTTPRoute…) gắn vào Gateway để định tuyến tới Service.',
+    use: ['Tách vai: đội hạ tầng quản Gateway, đội ứng dụng tự viết Route'],
+    tips: ['Cần một implementation (Envoy Gateway, Istio, Cilium, Traefik…) và GatewayClass tương ứng'],
+    rel: ['GatewayClass', 'HTTPRoute', 'GRPCRoute', 'TCPRoute', 'TLSRoute', 'Service', 'Secret'],
+    doc: 'concepts/services-networking/gateway/',
+  },
+  GatewayClass: {
+    what: 'Loại Gateway, cho biết controller nào triển khai các Gateway thuộc class này (giống IngressClass cho Ingress).',
+    use: ['Chọn implementation cho Gateway'],
+    tips: ['Accepted = False: controller chưa cài hoặc không nhận class này'],
+    rel: ['Gateway'],
+    doc: 'concepts/services-networking/gateway/',
+  },
+  HTTPRoute: {
+    what: 'Luật định tuyến HTTP của Gateway API: khớp theo host, đường dẫn, header… rồi chuyển tới Service, có thể chia % traffic (canary), đổi header, redirect.',
+    use: ['Thay Ingress với khả năng mạnh hơn và chuẩn hơn giữa các controller'],
+    tips: ['Route phải được Gateway chấp nhận (parentRefs + allowedRoutes), xem status.parents'],
+    rel: ['Gateway', 'Service'],
+    doc: 'concepts/services-networking/gateway/',
+  },
+  GRPCRoute: { what: 'Như HTTPRoute nhưng cho gRPC: khớp theo service/method gRPC.', use: ['Định tuyến API gRPC qua Gateway'], tips: [], rel: ['Gateway', 'Service'], doc: 'concepts/services-networking/gateway/' },
+  TCPRoute: { what: 'Gateway API: chuyển tiếp kết nối TCP thô từ một listener của Gateway tới Service (không hiểu HTTP).', use: ['Database, MQTT, giao thức TCP tuỳ ý'], tips: ['Vẫn ở kênh experimental của Gateway API'], rel: ['Gateway', 'Service'], doc: 'concepts/services-networking/gateway/' },
+  TLSRoute: { what: 'Gateway API: định tuyến kết nối TLS theo tên miền (SNI) mà không giải mã, chuyển nguyên tới Service.', use: ['TLS passthrough: ứng dụng tự giữ chứng chỉ'], tips: [], rel: ['Gateway', 'Service'], doc: 'concepts/services-networking/gateway/' },
+  UDPRoute: { what: 'Gateway API: chuyển tiếp gói UDP từ Gateway tới Service.', use: ['DNS, game server, VoIP'], tips: [], rel: ['Gateway', 'Service'], doc: 'concepts/services-networking/gateway/' },
+  IngressRoute: { what: 'CRD riêng của Traefik, tương đương Ingress nhưng đầy đủ tính năng Traefik: luật Host()/PathPrefix(), middleware, TLS, chia tải có trọng số.', use: ['Cluster dùng Traefik làm ingress controller'], tips: ['entryPoints quyết định cổng nhận (web = 80, websecure = 443)'], rel: ['Middleware', 'TraefikService', 'Service', 'Secret'], doc: 'https://doc.traefik.io/traefik/routing/providers/kubernetes-crd/' },
+  IngressRouteTCP: { what: 'Traefik: định tuyến TCP (theo SNI khi có TLS) tới Service.', use: ['Database, giao thức TCP qua Traefik'], tips: [], rel: ['Service', 'MiddlewareTCP'], doc: 'https://doc.traefik.io/traefik/routing/providers/kubernetes-crd/' },
+  IngressRouteUDP: { what: 'Traefik: chuyển tiếp UDP tới Service.', use: ['DNS, game server qua Traefik'], tips: [], rel: ['Service'], doc: 'https://doc.traefik.io/traefik/routing/providers/kubernetes-crd/' },
+  Middleware: { what: 'Traefik: bước xử lý chèn vào giữa request và Service: xác thực basic/forward auth, giới hạn tốc độ, thêm header, redirect HTTPS, strip prefix…', use: ['Gắn vào IngressRoute (hoặc Ingress qua annotation)'], tips: ['Tham chiếu chéo namespace dạng <ns>-<tên>@kubernetescrd'], rel: ['IngressRoute', 'Ingress'], doc: 'https://doc.traefik.io/traefik/middlewares/overview/' },
+  MiddlewareTCP: { what: 'Traefik: middleware cho route TCP (giới hạn kết nối, IP allowlist).', use: [], tips: [], rel: ['IngressRouteTCP'], doc: 'https://doc.traefik.io/traefik/middlewares/overview/' },
+  TraefikService: { what: 'Traefik: "service ảo" để chia tải có trọng số giữa nhiều Service (canary, blue/green) hoặc nhân bản traffic (mirroring).', use: ['Chuyển dần 10% → 100% traffic sang bản mới'], tips: [], rel: ['IngressRoute', 'Service'], doc: 'https://doc.traefik.io/traefik/routing/providers/kubernetes-crd/' },
+
+  /* ---------- config ---------- */
+  ConfigMap: {
+    what: 'Lưu cấu hình dạng key → giá trị (hoặc cả file) tách khỏi image. Pod đọc qua biến môi trường hoặc mount thành file.',
+    use: ['File cấu hình, URL dịch vụ, cờ tính năng, khác nhau giữa môi trường'],
+    tips: ['Đổi ConfigMap: file mount tự cập nhật sau ít phút, còn biến môi trường chỉ đổi khi Pod restart', 'Không để mật khẩu ở đây: dùng Secret', 'Giới hạn 1 MiB'],
+    rel: ['Pod', 'Deployment', 'Secret'],
+    doc: 'concepts/configuration/configmap/',
+  },
+  Secret: {
+    what: 'Như ConfigMap nhưng cho dữ liệu nhạy cảm: mật khẩu, token, chứng chỉ TLS, thông tin đăng nhập registry. Giá trị được mã hoá base64 (chỉ là mã hoá, KHÔNG phải mã hoá bảo mật) và quyền đọc được kiểm soát riêng bằng RBAC.',
+    use: ['Mật khẩu DB, API key → biến môi trường / file', 'kubernetes.io/tls: chứng chỉ cho Ingress', 'dockerconfigjson: pull image từ registry riêng (imagePullSecrets)'],
+    tips: ['Ai đọc được Secret trong namespace là xem được nội dung: cấp quyền cẩn thận', 'Nên bật mã hoá etcd hoặc dùng External Secrets / Sealed Secrets', 'Không commit Secret thật vào git'],
+    rel: ['Pod', 'ServiceAccount', 'Ingress', 'ConfigMap'],
+    doc: 'concepts/configuration/secret/',
+  },
+  ResourceQuota: {
+    what: 'Hạn mức tổng cho một namespace: tổng CPU/RAM requests & limits, số Pod, số Service, dung lượng lưu trữ…',
+    use: ['Chia tài nguyên công bằng giữa các team/môi trường'],
+    tips: ['Khi quota có CPU/RAM, mọi Pod phải khai báo requests/limits (hoặc có LimitRange cấp mặc định), nếu không sẽ bị từ chối', 'Vượt quota: Pod không được tạo, xem Events của ReplicaSet'],
+    rel: ['LimitRange', 'Pod'],
+    doc: 'concepts/policy/resource-quotas/',
+  },
+  LimitRange: {
+    what: 'Giá trị mặc định và min/max cho requests/limits của từng container (hoặc PVC) trong namespace.',
+    use: ['Tự gán requests/limits cho Pod quên khai báo', 'Chặn container xin quá nhiều'],
+    tips: ['Chỉ áp dụng khi tạo Pod mới, không sửa Pod đang chạy'],
+    rel: ['ResourceQuota', 'Pod'],
+    doc: 'concepts/policy/limit-range/',
+  },
+  PriorityClass: {
+    what: 'Mức ưu tiên của Pod. Khi cluster hết chỗ, Pod ưu tiên cao có thể đuổi (preempt) Pod ưu tiên thấp để được xếp lịch.',
+    use: ['Đảm bảo thành phần hệ thống / dịch vụ quan trọng luôn có chỗ'],
+    tips: ['system-cluster-critical và system-node-critical dành cho thành phần hệ thống'],
+    rel: ['Pod'],
+    doc: 'concepts/scheduling-eviction/pod-priority-preemption/',
+  },
+  RuntimeClass: {
+    what: 'Chọn container runtime / cấu hình runtime cho Pod (vd gVisor, Kata Containers để cách ly mạnh hơn).',
+    use: ['Chạy mã không tin cậy trong sandbox'],
+    tips: [],
+    rel: ['Pod', 'Node'],
+    doc: 'concepts/containers/runtime-class/',
+  },
+  Lease: {
+    what: 'Đối tượng nhỏ dùng như "khoá có hạn": bầu leader giữa các bản sao controller, và node gửi nhịp tim (heartbeat) qua Lease trong namespace kube-node-lease.',
+    use: ['Xem bản sao nào đang làm leader'],
+    tips: ['Thường không cần đụng tới'],
+    rel: ['Node'],
+    doc: 'concepts/architecture/leases/',
+  },
+
+  /* ---------- storage ---------- */
+  PersistentVolumeClaim: {
+    what: 'Yêu cầu ổ đĩa của ứng dụng: "cần 10Gi, kiểu ReadWriteOnce, lớp fast-ssd". Kubernetes gắn (bind) PVC với một PersistentVolume phù hợp, thường tự tạo mới qua StorageClass. Pod mount PVC để dữ liệu sống sót khi Pod bị thay.',
+    use: ['Dữ liệu database, file upload, cache cần giữ lại'],
+    tips: ['Pending: không có StorageClass mặc định, hoặc chờ Pod đầu tiên (WaitForFirstConsumer)', 'ReadWriteOnce: chỉ mount được trên một node một lúc', 'Xoá PVC có thể xoá luôn dữ liệu (reclaimPolicy: Delete)'],
+    rel: ['PersistentVolume', 'StorageClass', 'Pod', 'StatefulSet'],
+    doc: 'concepts/storage/persistent-volumes/',
+  },
+  PersistentVolume: {
+    what: 'Một ổ đĩa thật trong cluster (disk cloud, NFS, ổ local…), là tài nguyên cấp cluster. Được tạo tự động bởi StorageClass hoặc admin tạo tay, rồi bind với một PVC.',
+    use: ['Xem PVC nào đang dùng ổ nào, dung lượng, nằm ở đâu'],
+    tips: ['Released: PVC đã xoá nhưng ổ còn (reclaimPolicy: Retain), phải dọn hoặc tái sử dụng thủ công'],
+    rel: ['PersistentVolumeClaim', 'StorageClass', 'Node'],
+    doc: 'concepts/storage/persistent-volumes/',
+  },
+  StorageClass: {
+    what: '"Loại" lưu trữ (SSD, HDD, NFS…) và cách tạo ổ tự động (provisioner). PVC chọn class, class tạo PV tương ứng.',
+    use: ['Cấp ổ đĩa động, không cần admin tạo PV trước'],
+    tips: ['Class mặc định dùng cho PVC không ghi class', 'allowVolumeExpansion: true thì PVC mới tăng dung lượng được'],
+    rel: ['PersistentVolumeClaim', 'PersistentVolume', 'CSIDriver'],
+    doc: 'concepts/storage/storage-classes/',
+  },
+  VolumeAttachment: { what: 'Ghi nhận việc một ổ đĩa (PV) đang được gắn vào node nào, do CSI driver xử lý.', use: ['Gỡ lỗi Pod kẹt ContainerCreating vì ổ chưa gắn được'], tips: ['Ổ ReadWriteOnce còn gắn ở node cũ sẽ chặn Pod ở node mới'], rel: ['PersistentVolume', 'Node', 'CSIDriver'], doc: 'reference/kubernetes-api/config-and-storage-resources/volume-attachment-v1/' },
+  CSIDriver: { what: 'Khai báo một driver lưu trữ CSI đã cài trong cluster (EBS, Ceph, Longhorn…) và khả năng của nó.', use: ['Xem cluster hỗ trợ những loại ổ nào'], tips: [], rel: ['StorageClass', 'CSINode'], doc: 'concepts/storage/volumes/#csi' },
+  CSINode: { what: 'Thông tin CSI driver nào đang chạy trên từng node và giới hạn số ổ gắn được.', use: [], tips: [], rel: ['Node', 'CSIDriver'], doc: 'concepts/storage/volumes/#csi' },
+
+  /* ---------- access ---------- */
+  ServiceAccount: {
+    what: 'Danh tính của ứng dụng (khác user là người). Pod chạy với một ServiceAccount; token của nó dùng để gọi Kubernetes API, quyền được cấp qua RoleBinding.',
+    use: ['Cho controller / CI trong cluster quyền gọi API', 'Gắn imagePullSecrets', 'Liên kết với IAM cloud (IRSA, Workload Identity)'],
+    tips: ['Mặc định Pod dùng SA "default"; tắt automountServiceAccountToken nếu không cần gọi API'],
+    rel: ['Pod', 'RoleBinding', 'ClusterRoleBinding', 'Secret'],
+    doc: 'concepts/security/service-accounts/',
+  },
+  Role: {
+    what: 'Tập quyền trong một namespace: được làm gì (get, list, create, delete…) với tài nguyên nào (pods, secrets…). Bản thân Role chưa cấp cho ai; cần RoleBinding.',
+    use: ['Quyền cho team / ứng dụng gói gọn trong namespace của mình'],
+    tips: ['Tránh "*" trên secrets: đọc được Secret là có mật khẩu'],
+    rel: ['RoleBinding', 'ClusterRole'],
+    doc: 'reference/access-authn-authz/rbac/',
+  },
+  ClusterRole: {
+    what: 'Như Role nhưng cấp cluster: quyền trên mọi namespace, hoặc trên tài nguyên không thuộc namespace (Node, PV…). Cũng dùng làm "mẫu quyền" để RoleBinding cấp trong một namespace.',
+    use: ['admin, edit, view: các ClusterRole có sẵn dùng lại được'],
+    tips: ['cluster-admin = toàn quyền, cấp hết sức hạn chế'],
+    rel: ['ClusterRoleBinding', 'RoleBinding', 'Role'],
+    doc: 'reference/access-authn-authz/rbac/',
+  },
+  RoleBinding: {
+    what: 'Gán một Role (hoặc ClusterRole) cho user, group hoặc ServiceAccount, có hiệu lực trong một namespace.',
+    use: ['"Cho SA ci-deployer quyền edit trong namespace shop"'],
+    tips: ['roleRef không sửa được, muốn đổi phải xoá tạo lại'],
+    rel: ['Role', 'ClusterRole', 'ServiceAccount'],
+    doc: 'reference/access-authn-authz/rbac/',
+  },
+  ClusterRoleBinding: {
+    what: 'Gán một ClusterRole cho user/group/ServiceAccount trên toàn cluster.',
+    use: ['Quyền cho thành phần hệ thống, controller, admin'],
+    tips: ['Rà soát định kỳ: binding tới cluster-admin là rủi ro lớn nhất'],
+    rel: ['ClusterRole', 'ServiceAccount'],
+    doc: 'reference/access-authn-authz/rbac/',
+  },
+  CertificateSigningRequest: { what: 'Yêu cầu ký chứng chỉ bởi CA của cluster, phải được duyệt (approve) mới có chứng chỉ.', use: ['Cấp chứng chỉ cho kubelet, cho user mới'], tips: ['Duyệt nhầm CSR có thể cấp quyền ngoài ý muốn'], rel: ['Node'], doc: 'reference/access-authn-authz/certificate-signing-requests/' },
+
+  /* ---------- cluster ---------- */
+  Node: {
+    what: 'Một máy (VM hoặc vật lý) chạy Pod. Mỗi node có kubelet nhận lệnh từ control plane, container runtime và kube-proxy. Node báo dung lượng CPU/RAM để scheduler xếp Pod.',
+    use: ['Xem node nào đầy tải, NotReady, bị cordon', 'Cordon/drain để bảo trì'],
+    tips: ['NotReady: kubelet mất liên lạc (máy chết, mạng, hết đĩa)', 'Taint đẩy Pod ra trừ khi Pod có toleration tương ứng', 'Pressure (Memory/Disk/PID) khiến Pod bị đuổi'],
+    rel: ['Pod', 'DaemonSet', 'PersistentVolume', 'Lease'],
+    doc: 'concepts/architecture/nodes/',
+  },
+  Namespace: {
+    what: 'Không gian tên chia cluster thành các vùng logic (theo team, môi trường). Tên tài nguyên chỉ cần duy nhất trong namespace; quota, RBAC, NetworkPolicy thường áp theo namespace.',
+    use: ['Tách dev/staging/prod, tách team'],
+    tips: ['Xoá namespace xoá MỌI thứ bên trong', 'Kẹt Terminating thường do finalizer của CRD/APIService hỏng'],
+    rel: ['ResourceQuota', 'LimitRange', 'NetworkPolicy', 'RoleBinding'],
+    doc: 'concepts/overview/working-with-objects/namespaces/',
+  },
+  MutatingWebhookConfiguration: { what: 'Đăng ký webhook được gọi mỗi khi tạo/sửa tài nguyên để TỰ SỬA nó trước khi lưu (vd Istio chèn sidecar, gán giá trị mặc định).', use: ['Hiểu vì sao Pod có thêm container / label lạ'], tips: ['Webhook chết + failurePolicy: Fail sẽ chặn tạo tài nguyên toàn cluster'], rel: ['ValidatingWebhookConfiguration', 'Service'], doc: 'reference/access-authn-authz/extensible-admission-controllers/' },
+  ValidatingWebhookConfiguration: { what: 'Đăng ký webhook kiểm tra tài nguyên khi tạo/sửa và có thể TỪ CHỐI (vd Kyverno, Gatekeeper, cert-manager).', use: ['Áp chính sách: cấm image :latest, bắt buộc label…'], tips: ['Lỗi "admission webhook … denied" khi apply là từ đây', 'Webhook chết + failurePolicy: Fail sẽ chặn thao tác'], rel: ['MutatingWebhookConfiguration', 'ValidatingAdmissionPolicy', 'Service'], doc: 'reference/access-authn-authz/extensible-admission-controllers/' },
+  ValidatingAdmissionPolicy: { what: 'Luật kiểm tra tài nguyên viết bằng biểu thức CEL, chạy ngay trong API server, không cần webhook.', use: ['Chính sách đơn giản mà không phải vận hành webhook'], tips: ['Cần ValidatingAdmissionPolicyBinding mới có hiệu lực'], rel: ['ValidatingAdmissionPolicyBinding'], doc: 'reference/access-authn-authz/validating-admission-policy/' },
+  ValidatingAdmissionPolicyBinding: { what: 'Áp một ValidatingAdmissionPolicy cho phạm vi cụ thể (namespace, label) và chọn hành động: chặn, cảnh báo hay chỉ ghi audit.', use: [], tips: [], rel: ['ValidatingAdmissionPolicy'], doc: 'reference/access-authn-authz/validating-admission-policy/' },
+  APIService: { what: 'Đăng ký một nhóm API vào API server; các API mở rộng (vd metrics.k8s.io của metrics-server) được chuyển tới Service tương ứng.', use: ['Gỡ lỗi "the server is currently unable to handle the request"'], tips: ['APIService Available = False làm kubectl chậm/báo lỗi và có thể kẹt xoá namespace'], rel: ['Service'], doc: 'concepts/extend-kubernetes/api-extension/apiserver-aggregation/' },
+  CustomResourceDefinition: { what: 'Định nghĩa một loại tài nguyên mới cho Kubernetes (CRD). Sau khi cài, bạn tạo được đối tượng loại đó như tài nguyên có sẵn; một operator/controller sẽ xử lý chúng.', use: ['Mở rộng Kubernetes: cert-manager, Argo CD, Prometheus Operator…'], tips: ['Xoá CRD xoá mọi đối tượng thuộc loại đó'], rel: [], doc: 'concepts/extend-kubernetes/api-extension/custom-resources/' },
+};
+
+/* custom resources we don't know: a generic explanation */
+const CUSTOM_DOC = {
+  what: 'Tài nguyên tuỳ chỉnh (custom resource), không có sẵn trong Kubernetes mà được thêm vào bằng một CustomResourceDefinition, thường do một operator hoặc công cụ cài đặt (Helm chart, cert-manager, Argo CD, Prometheus Operator…). Controller của công cụ đó đọc đối tượng này và làm việc tương ứng.',
+  use: ['Ý nghĩa cụ thể tuỳ công cụ: xem tài liệu của nhóm API bên dưới', 'Trường status thường cho biết controller đã xử lý thành công chưa'],
+  tips: ['Không thấy controller xử lý: kiểm tra operator tương ứng còn chạy không'],
+  rel: [],
+};

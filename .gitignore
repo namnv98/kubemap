@@ -2,3 +2,5 @@ target/
 .idea/
 *.iml
 config/kubeconfigs/
+config/secrets/
+logs/

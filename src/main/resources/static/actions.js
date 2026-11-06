@@ -25,8 +25,9 @@ async function api(method, path, body) {
 function toast(msg, kind = 'ok') {
   const t = document.createElement('div');
   t.className = 'toast ' + kind;
-  t.innerHTML = `${kind === 'ok' ? '<svg class="i" viewBox="0 0 24 24"><path d="M5 12l5 5L20 7"/></svg>'
-    : '<svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>'}<span>${esc(msg)}</span>`;
+  t.setAttribute('role', kind === 'ok' ? 'status' : 'alert');
+  t.innerHTML = `<span class="t-ic">${kind === 'ok' ? '<svg class="i" viewBox="0 0 24 24"><path d="M5 12l5 5L20 7"/></svg>'
+    : '<svg class="i" viewBox="0 0 24 24"><path d="M12 7v6M12 17h.01"/></svg>'}</span><span class="t-msg">${esc(msg)}</span>`;
   $('toasts').appendChild(t);
   requestAnimationFrame(() => t.classList.add('show'));
   setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 250); }, kind === 'ok' ? 3500 : 7000);
@@ -34,10 +35,40 @@ function toast(msg, kind = 'ok') {
 
 /* ---------------- modal ---------------- */
 let modalResolve = null, modalGuard = null;
+/* header icon per kind of dialog: [match on the title, svg, tone] — first match wins */
+const MODAL_ICONS = [
+  [/^Xoá|^Gỡ|^Uninstall/i, '<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>', 'danger'],
+  [/^Scale/i, '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>', 'accent'],
+  [/^Restart|^Khởi động lại/i, '<path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5"/>', 'warn'],
+  [/^Rollback|^Hoàn tác/i, '<path d="M9 14L4 9l5-5M4 9h11a5 5 0 0 1 0 10h-3"/>', 'warn'],
+  [/Port-forward/i, '<path d="M4 8h13l-3-3M20 16H7l3 3"/>', 'accent'],
+  [/^Lịch sử/i, '<path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5M12 7v5l3 2"/>', 'accent'],
+  [/^Phím tắt/i, '<rect x="2" y="6" width="20" height="13" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 15h10"/>', 'accent'],
+  [/Helm|repo/i, '<circle cx="12" cy="12" r="3.2"/><circle cx="12" cy="12" r="8"/><path d="M12 1.5v4M12 18.5v4M1.5 12h4M18.5 12h4M4.6 4.6l2.8 2.8M16.6 16.6l2.8 2.8M4.6 19.4l2.8-2.8M16.6 7.4l2.8-2.8"/>', 'accent'],
+  [/^So sánh|revision/i, '<path d="M8 3v18M16 3v18M3 8h5M16 16h5"/>', 'accent'],
+  [/^Cluster/i, '<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/>', 'accent'],
+  [/^(Tạm dừng|Tiếp tục|Chạy ngay|Trigger)/i, '<path d="M7 4l12 8-12 8z"/>', 'accent'],
+  [/^Sửa|^Áp dụng|^Lưu/i, '<path d="M4 20h4L19 9l-4-4L4 16z"/>', 'accent'],
+  [/./, '<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>', 'accent'],
+];
+
 function openModal(html, onOpen, opts = {}) {
   modalGuard = opts.guard || null;
   $('modalBox').className = 'modal' + (opts.wide ? ' wide' : '');
   $('modalBox').innerHTML = html;
+  // header: icon tile + title, with the cluster / namespace line moved under the title (wide editors keep their own header)
+  const head = $('modalBox').querySelector('.m-head'), h3 = head?.querySelector('h3');
+  if (head && h3 && !head.querySelector('.m-ic')) {
+    // opts.icon / opts.color: e.g. the kind's own icon and colour for the YAML editor
+    const [, svg, tone] = opts.icon ? [null, opts.icon, ''] : MODAL_ICONS.find(([re]) => re.test(h3.textContent.trim()));
+    const title = document.createElement('div');
+    title.className = 'm-title';
+    h3.replaceWith(title);
+    title.appendChild(h3);
+    const ctx = $('modalBox').querySelector(':scope > .m-ctx');
+    if (ctx) title.appendChild(ctx);
+    head.insertAdjacentHTML('afterbegin', `<span class="m-ic ${opts.tone || tone}" ${opts.color ? `style="--c:${opts.color}"` : ''}><svg class="i" viewBox="0 0 24 24">${svg}</svg></span>`);
+  }
   $('modal').hidden = false;
   requestAnimationFrame(() => $('modal').classList.add('show'));
   if (onOpen) onOpen($('modalBox'));
@@ -69,7 +100,7 @@ function contextBar(ns) {
 function confirmAction({ title, ns, body, confirmLabel = 'Xác nhận', danger = false, requireText = null }) {
   return new Promise(resolve => {
     modalResolve = resolve;
-    const gate = requireText ? `<div class="typecheck">Gõ <code>${esc(requireText)}</code> để xác nhận<input id="confirmText" autocomplete="off" spellcheck="false" data-autofocus></div>` : '';
+    const gate = requireText ? `<label class="typecheck"><span>Gõ <code>${esc(requireText)}</code> để xác nhận</span><input id="confirmText" autocomplete="off" spellcheck="false" data-autofocus></label>` : '';
     openModal(`
       <div class="m-head"><h3>${esc(title)}</h3><button class="icon-btn sm" data-m="cancel" aria-label="Đóng"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
       ${contextBar(ns)}
@@ -127,27 +158,36 @@ function hasOwner(id) { return state.graph.edges.some(e => e.type === 'owns' && 
 
 /* toolbar buttons in the panel header (YAML for every kind, read-only when writes are off) */
 function actionTools(n) {
-  if (n.missing) return '';
+  const none = { main: '', more: '', danger: '' };
+  if (n.missing) return none;
   const I = p => `<svg class="i" viewBox="0 0 24 24">${p}</svg>`;
-  const b = [`<button class="tool" data-act="manifest">${I('<path d="M8 7l-5 5 5 5M16 7l5 5-5 5"/>')}${state.writeEnabled ? 'YAML / Sửa' : 'YAML'}</button>`];
-  if (typeof pfTool === 'function') b.push(pfTool(n)); // read-only too: it changes nothing in the cluster
-  if (!state.writeEnabled) return b.join('');
-  if (SCALABLE.includes(n.kind) && !(n.kind === 'ReplicaSet' && hasOwner(n.id)))
-    b.push(`<button class="tool" data-act="scale-toggle" aria-expanded="${state.scaleOpen === n.id}">${I('<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>')}Scale</button>`);
-  if (RESTARTABLE.includes(n.kind)) b.push(`<button class="tool" data-act="restart">${I('<path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5"/>')}Restart</button>`);
-  if (n.kind === 'CronJob') {
-    const suspended = n.status === 'Suspended';
-    b.push(`<button class="tool" data-act="trigger">${I('<path d="M7 4l12 8-12 8z"/>')}Chạy ngay</button>`);
-    b.push(`<button class="tool" data-act="${suspended ? 'resume' : 'suspend'}">${suspended ? I('<path d="M7 4l12 8-12 8z"/>') + 'Tiếp tục lịch' : I('<path d="M8 5v14M16 5v14"/>') + 'Tạm dừng lịch'}</button>`);
+  const main = [state.writeEnabled
+    ? `<button class="tool" data-act="manifest" title="Sửa manifest (dry-run + diff trước khi áp dụng)">${I('<path d="M4 20h4L19 9l-4-4L4 16z"/>')}Sửa</button>`
+    : `<button class="tool" data-act="manifest">${I('<path d="M8 7l-5 5 5 5M16 7l5 5-5 5"/>')}YAML</button>`];
+  const more = []; // secondary actions live in the "⋯" menu, so the toolbar stays one row
+  const item = (attr, svg, label) => `<button class="mi" role="menuitem" ${attr}>${I(svg)}${label}</button>`;
+  // a viewer (login on, not admin) can't start port-forwards; with login off, port-forward works even in read-only mode
+  const canForward = typeof auth === 'undefined' || !auth.enabled || auth.admin;
+  if (canForward && typeof pfTool === 'function' && pfTool(n)) more.push(item('data-pf="open"', '<path d="M4 8h13l-3-3M20 16H7l3 3"/>', 'Port-forward…'));
+  if (state.writeEnabled) {
+    if (SCALABLE.includes(n.kind) && !(n.kind === 'ReplicaSet' && hasOwner(n.id)))
+      main.push(`<button class="tool" data-act="scale-toggle" aria-expanded="${state.scaleOpen === n.id}">${I('<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>')}Scale</button>`);
+    if (RESTARTABLE.includes(n.kind)) main.push(`<button class="tool" data-act="restart">${I('<path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5"/>')}Restart</button>`);
+    if (n.kind === 'CronJob') {
+      const suspended = n.status === 'Suspended';
+      main.push(`<button class="tool" data-act="trigger">${I('<path d="M7 4l12 8-12 8z"/>')}Chạy ngay</button>`);
+      more.push(item(`data-act="${suspended ? 'resume' : 'suspend'}"`, suspended ? '<path d="M7 4l12 8-12 8z"/>' : '<path d="M8 5v14M16 5v14"/>', suspended ? 'Tiếp tục lịch' : 'Tạm dừng lịch'));
+    }
+    if (n.kind === 'Deployment') {
+      const paused = n.info?.paused === 'true';
+      more.push(item(`data-act="${paused ? 'resume-rollout' : 'pause-rollout'}"`, paused ? '<path d="M7 4l12 8-12 8z"/>' : '<path d="M8 5v14M16 5v14"/>', paused ? 'Tiếp tục rollout' : 'Tạm dừng rollout'));
+    }
+    if (typeof openTerminalFor === 'function' && (n.kind === 'Pod' ? n.status === 'Running' || n.status?.startsWith('Running') : podsFor(n.id).length))
+      if (n.kind === 'Pod') main.push(`<button class="tool" data-act="terminal">${I('<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9l3 3-3 3M12 15h5"/>')}Terminal</button>`);
+      else more.unshift(item('data-act="terminal"', '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9l3 3-3 3M12 15h5"/>', 'Terminal vào pod…'));
   }
-  if (n.kind === 'Deployment') {
-    const paused = n.info?.paused === 'true';
-    b.push(`<button class="tool" data-act="${paused ? 'resume-rollout' : 'pause-rollout'}">${paused ? I('<path d="M7 4l12 8-12 8z"/>') + 'Tiếp tục rollout' : I('<path d="M8 5v14M16 5v14"/>') + 'Tạm dừng rollout'}</button>`);
-  }
-  if (typeof openTerminalFor === 'function' && (n.kind === 'Pod' ? n.status === 'Running' || n.status?.startsWith('Running') : podsFor(n.id).length))
-    b.push(`<button class="tool" data-act="terminal">${I('<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9l3 3-3 3M12 15h5"/>')}Terminal</button>`);
-  b.push(`<button class="tool danger" data-act="delete">${I('<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>')}Xoá</button>`);
-  return b.join('');
+  if (state.writeEnabled) more.push(`<div class="sep"></div><button class="mi danger" role="menuitem" data-act="delete">${I('<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>')}Xoá ${esc(kindInfo(n).label)}…</button>`);
+  return { main: main.join(''), more: more.join(''), danger: '' };
 }
 
 /* the scale stepper row, shown under the toolbar while "Scale" is open */
@@ -314,7 +354,7 @@ async function openManifest(n) {
       box.addEventListener('click', mfClick);
       mfMode('view');
     },
-    { wide: true, guard: () => {
+    { wide: true, icon: ICONS[iconKind(n)], color: kindInfo(n).color, guard: () => {
       if (mf.mode !== 'view' && mfDirty()) { toast('Có thay đổi chưa lưu — bấm "Huỷ thay đổi" để bỏ', 'err'); return false; }
       return true;
     } });
@@ -391,7 +431,7 @@ function mfShowError(msg) {
     const fields = [...raw.matchAll(/conflict with "([^"]+)"[^:]*: (\S+)/g)].map(m => `<li><code>${esc(m[2])}</code> — do <b>${esc(m[1])}</b> quản lý</li>`).join('');
     $('mfConflict').innerHTML = `<b>Xung đột field (server-side apply)</b><ul style="margin:6px 0 0 18px;padding:0">${fields || `<li>${esc(raw)}</li>`}</ul>
       <div>Field này đang do client/controller khác quản lý. Ép ghi sẽ chuyển quyền quản lý field sang <code>k8s-studio</code> — nếu đó là controller (HPA, operator…) nó có thể đổi lại.</div>
-      <div class="row"><button class="btn" data-mf="force">Ép ghi đè (force)</button></div>`;
+      <div class="row"><button class="btn sm danger-outline" data-mf="force">Ép ghi đè (force)</button></div>`;
     $('mfConflict').hidden = false;
     if (mf.mode !== 'edit') mfMode('edit');
     $('mfConflict').hidden = false;

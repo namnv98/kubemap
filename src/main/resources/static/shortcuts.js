@@ -14,8 +14,10 @@ const CMD_KINDS = {
 };
 const CMD_VIEWS = { grid: 'grid', g: 'grid', tl: 'timeline', events: 'timeline', ev: 'timeline', helm: 'helm', sec: 'security', security: 'security', rbac: 'security' };
 
-$('cmdbar').innerHTML = `<span class="cb-p">:</span><input id="cmdIn" autocomplete="off" spellcheck="false" aria-label="Lệnh"
-  placeholder="po · deploy · svc · ns shop · ns all · helm · tl · sec · grid · graph · ctx  (Tab để gợi ý)"><span class="cb-hint" id="cmdHint"></span>`;
+$('cmdbar').innerHTML = `<div class="cb-row"><span class="cb-p">:</span><input id="cmdIn" autocomplete="off" spellcheck="false" aria-label="Lệnh"
+  placeholder="Gõ lệnh: po, deploy, svc, ns shop, helm…"><kbd class="cb-k">Enter</kbd></div><div class="cb-hint" id="cmdHint"></div>`;
+const CMD_COMMON = ['po', 'deploy', 'svc', 'ing', 'cm', 'no', 'ns all', 'helm', 'tl', 'sec', 'graph', 'ctx'];
+const cmdChips = list => list.map(c => `<button type="button" class="cb-s" data-cmd="${esc(c)}">${esc(c)}</button>`).join('');
 
 function cmdSuggest(v) {
   const [w] = v.trim().split(/\s+/);
@@ -26,7 +28,7 @@ function cmdSuggest(v) {
 function openCmd() {
   $('cmdbar').hidden = false;
   $('cmdIn').value = '';
-  $('cmdHint').textContent = '';
+  $('cmdHint').innerHTML = cmdChips(CMD_COMMON);
   $('cmdIn').focus();
 }
 function closeCmd() { $('cmdbar').hidden = true; $('cmdIn').blur(); }
@@ -64,7 +66,8 @@ $('cmdIn').addEventListener('keydown', e => {
     if (s.length) $('cmdIn').value = s[0] + ($('cmdIn').value.includes(' ') ? $('cmdIn').value.slice($('cmdIn').value.indexOf(' ')) : ' ');
   }
 });
-$('cmdIn').addEventListener('input', () => { const s = cmdSuggest($('cmdIn').value); $('cmdHint').textContent = s.length ? s.join('  ') : ''; });
+$('cmdIn').addEventListener('input', () => { const v = $('cmdIn').value.trim(); const s = cmdSuggest(v); $('cmdHint').innerHTML = cmdChips(v ? s : CMD_COMMON); });
+$('cmdbar').addEventListener('pointerdown', e => { const c = e.target.closest('[data-cmd]'); if (!c) return; e.preventDefault(); closeCmd(); runCmd(c.dataset.cmd); });
 $('cmdIn').addEventListener('blur', () => setTimeout(() => { if (document.activeElement !== $('cmdIn')) $('cmdbar').hidden = true; }, 100));
 
 /* the graph: close every view (the grid included) and remember it in the URL so a reload stays on it */
@@ -74,23 +77,24 @@ function showGraph() {
 }
 
 function showKeys() {
-  const k = (keys, what) => `<tr><td>${keys.map(x => `<kbd>${esc(x)}</kbd>`).join(' ')}</td><td>${what}</td></tr>`;
+  const k = (keys, what) => `<div class="kk"><span class="kk-k">${keys.map(x => `<kbd>${esc(x)}</kbd>`).join('')}</span><span class="kk-t">${what}</span></div>`;
+  const group = (title, items) => `<section class="kg"><h4>${title}</h4>${items.join('')}</section>`;
   openModal(`<div class="m-head"><h3>Phím tắt</h3><button class="icon-btn sm" data-close aria-label="Đóng"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
-    <div class="m-body"><table class="tbl keys-tbl">
-      ${k([':'], 'Thanh lệnh: <code>po</code> <code>deploy</code> <code>svc</code> <code>ing</code> <code>cm</code> <code>no</code>… (mở bảng theo loại), <code>ns shop</code> / <code>ns all</code>, <code>helm</code>, <code>tl</code>, <code>sec</code>, <code>grid</code>, <code>graph</code>, <code>ctx</code>. <kbd>Tab</kbd> gợi ý.')}
-      ${k(['/'], 'Tìm kiếm')}
-      ${k(['1'], 'Đồ thị')} ${k(['2'], 'Bảng (grid)')} ${k(['3'], 'Events timeline')} ${k(['4'], 'Helm')} ${k(['5'], 'Bảo mật')}
-      ${k(['j', 'k'], 'Bảng: xuống / lên (cũng ↑ ↓)')} ${k(['g', 'G'], 'Bảng: đầu / cuối trang')} ${k(['[', ']'], 'Bảng: trang trước / sau')}
-      ${k(['Enter'], 'Bảng: mở chi tiết')} ${k(['d'], 'Describe')} ${k(['y'], 'YAML')} ${k(['v'], 'Events của tài nguyên')}
-      ${k(['l'], 'Log (pod / workload)')} ${k(['s'], 'Shell vào pod')} ${k(['e'], 'Sửa YAML')}
-      ${k(['Esc'], 'Đóng / bỏ chọn')} ${k(['?'], 'Bảng này')}
-    </table></div>`, box => box.addEventListener('click', e => { if (e.target.closest('[data-close]')) closeModal(false); }));
+    <div class="m-body keys-grid">
+      ${group('Chung', [k([':'], 'Thanh lệnh'), k(['/'], 'Tìm kiếm'), k(['?'], 'Bảng phím tắt'), k(['Esc'], 'Đóng / bỏ chọn')])}
+      ${group('Chế độ xem', [k(['1'], 'Đồ thị'), k(['2'], 'Bảng'), k(['3'], 'Events timeline'), k(['4'], 'Helm'), k(['5'], 'Bảo mật')])}
+      ${group('Trong bảng', [k(['j', 'k'], 'Xuống / lên (↑ ↓)'), k(['g', 'G'], 'Đầu / cuối trang'), k(['[', ']'], 'Trang trước / sau'), k(['Enter'], 'Mở chi tiết')])}
+      ${group('Tài nguyên đang chọn', [k(['d'], 'Describe'), k(['y'], 'YAML'), k(['v'], 'Events'), k(['l'], 'Log'), k(['s'], 'Shell vào pod'), k(['e'], 'Sửa YAML')])}
+      <p class="kh">Thanh lệnh: <code>po</code> <code>deploy</code> <code>svc</code> <code>ing</code> <code>cm</code> <code>no</code>… mở bảng theo loại · <code>ns shop</code> / <code>ns all</code> đổi namespace · <code>helm</code> <code>tl</code> <code>sec</code> <code>grid</code> <code>graph</code> <code>ctx</code>. <kbd>Tab</kbd> để gợi ý.</p>
+    </div>`, box => box.addEventListener('click', e => { if (e.target.closest('[data-close]')) closeModal(false); }));
 }
 
 document.addEventListener('keydown', e => {
   const typing = ['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement?.tagName) || document.activeElement?.isContentEditable
     || document.activeElement?.closest?.('.CodeMirror, .xterm');
   if (typing || e.ctrlKey || e.metaKey || e.altKey || !$('modal').hidden) return;
+  // Enter / Space on a focused button or link belongs to that control (e.g. the Conditions toggle), not to the grid cursor
+  if ((e.key === 'Enter' || e.key === ' ') && document.activeElement?.closest?.('#detail button, #detail a, #detail summary, .dp-menu')) return;
   const views = { 1: () => showGraph(), 2: () => setGrid(true), 3: () => VIEWS.timeline(true), 4: () => VIEWS.helm(true), 5: () => VIEWS.security(true) };
   if (e.key === ':') { e.preventDefault(); openCmd(); return; }
   if (e.key === '?') { e.preventDefault(); showKeys(); return; }

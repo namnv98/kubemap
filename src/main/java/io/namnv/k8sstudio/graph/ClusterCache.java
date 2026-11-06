@@ -82,6 +82,24 @@ public class ClusterCache {
     volatile SharedIndexInformer<NetworkPolicy> networkPolicies;
     volatile SharedIndexInformer<Event> events;
     volatile SharedIndexInformer<CustomResourceDefinition> crds;
+    // quotas & defaults, legacy workloads, scheduling / runtime classes, admission, certificates, aggregated APIs, CSI
+    volatile SharedIndexInformer<ResourceQuota> resourceQuotas;
+    volatile SharedIndexInformer<LimitRange> limitRanges;
+    volatile SharedIndexInformer<ReplicationController> replicationControllers;
+    volatile SharedIndexInformer<io.fabric8.kubernetes.api.model.scheduling.v1.PriorityClass> priorityClasses;
+    volatile SharedIndexInformer<io.fabric8.kubernetes.api.model.node.v1.RuntimeClass> runtimeClasses;
+    volatile SharedIndexInformer<io.fabric8.kubernetes.api.model.admissionregistration.v1.MutatingWebhookConfiguration> mutatingWebhooks;
+    volatile SharedIndexInformer<io.fabric8.kubernetes.api.model.admissionregistration.v1.ValidatingWebhookConfiguration> validatingWebhooks;
+    volatile SharedIndexInformer<io.fabric8.kubernetes.api.model.admissionregistration.v1.ValidatingAdmissionPolicy> admissionPolicies;
+    volatile SharedIndexInformer<io.fabric8.kubernetes.api.model.admissionregistration.v1.ValidatingAdmissionPolicyBinding> admissionPolicyBindings;
+    volatile SharedIndexInformer<io.fabric8.kubernetes.api.model.certificates.v1.CertificateSigningRequest> csrs;
+    /** apiregistration.k8s.io has no fabric8 model class: generic objects */
+    volatile SharedIndexInformer<GenericKubernetesResource> apiServices;
+    volatile SharedIndexInformer<io.fabric8.kubernetes.api.model.storage.VolumeAttachment> volumeAttachments;
+    volatile SharedIndexInformer<io.fabric8.kubernetes.api.model.storage.CSIDriver> csiDrivers;
+    volatile SharedIndexInformer<io.fabric8.kubernetes.api.model.storage.CSINode> csiNodes;
+    /** leader-election leases (all namespaces but kube-node-lease); renewed every few seconds → no graph pushes of their own */
+    volatile SharedIndexInformer<io.fabric8.kubernetes.api.model.coordination.v1.Lease> leases;
     /** node heartbeats (kube-node-lease), for `describe node`; renewed every ~10s, so they don't trigger graph pushes */
     volatile SharedIndexInformer<io.fabric8.kubernetes.api.model.coordination.v1.Lease> nodeLeases;
 
@@ -143,6 +161,22 @@ public class ClusterCache {
         events = inform("events", client.v1().events().inAnyNamespace());
         crds = inform("crds", client.apiextensions().v1().customResourceDefinitions());
         nodeLeases = inform("nodeleases", client.leases().inNamespace("kube-node-lease"), false);
+        resourceQuotas = inform("resourcequotas", client.resourceQuotas().inAnyNamespace());
+        limitRanges = inform("limitranges", client.limitRanges().inAnyNamespace());
+        replicationControllers = inform("replicationcontrollers", client.replicationControllers().inAnyNamespace());
+        priorityClasses = inform("priorityclasses", client.scheduling().v1().priorityClasses());
+        runtimeClasses = inform("runtimeclasses", client.resources(io.fabric8.kubernetes.api.model.node.v1.RuntimeClass.class));
+        mutatingWebhooks = inform("mutatingwebhooks", client.admissionRegistration().v1().mutatingWebhookConfigurations());
+        validatingWebhooks = inform("validatingwebhooks", client.admissionRegistration().v1().validatingWebhookConfigurations());
+        admissionPolicies = inform("admissionpolicies", client.admissionRegistration().v1().validatingAdmissionPolicies());
+        admissionPolicyBindings = inform("admissionpolicybindings", client.admissionRegistration().v1().validatingAdmissionPolicyBindings());
+        csrs = inform("csrs", client.certificates().v1().certificateSigningRequests());
+        apiServices = inform("apiservices", client.genericKubernetesResources(new ResourceDefinitionContext.Builder()
+                .withGroup("apiregistration.k8s.io").withVersion("v1").withKind("APIService").withPlural("apiservices").withNamespaced(false).build()));
+        volumeAttachments = inform("volumeattachments", client.storage().v1().volumeAttachments());
+        csiDrivers = inform("csidrivers", client.storage().v1().csiDrivers());
+        csiNodes = inform("csinodes", client.storage().v1().csiNodes());
+        leases = inform("leases", client.leases().inAnyNamespace(), false);
         if (customResourcesEnabled) {
             int gen = generation;
             crds.addEventHandler(new ResourceEventHandler<>() {
@@ -302,6 +336,21 @@ public class ClusterCache {
             case "HorizontalPodAutoscaler" -> hpas;
             case "PodDisruptionBudget" -> pdbs;
             case "NetworkPolicy" -> networkPolicies;
+            case "ResourceQuota" -> resourceQuotas;
+            case "LimitRange" -> limitRanges;
+            case "ReplicationController" -> replicationControllers;
+            case "PriorityClass" -> priorityClasses;
+            case "RuntimeClass" -> runtimeClasses;
+            case "MutatingWebhookConfiguration" -> mutatingWebhooks;
+            case "ValidatingWebhookConfiguration" -> validatingWebhooks;
+            case "ValidatingAdmissionPolicy" -> admissionPolicies;
+            case "ValidatingAdmissionPolicyBinding" -> admissionPolicyBindings;
+            case "CertificateSigningRequest" -> csrs;
+            case "APIService" -> apiServices;
+            case "VolumeAttachment" -> volumeAttachments;
+            case "CSIDriver" -> csiDrivers;
+            case "CSINode" -> csiNodes;
+            case "Lease" -> leases;
             default -> null;
         };
     }
@@ -333,14 +382,28 @@ public class ClusterCache {
 
     /** Human-readable problems: informers not yet synced / failing. Empty = everything live. */
     public List<String> warnings() {
-        List<String> w = new ArrayList<>();
+        // group informers by error text: an unreachable cluster fails every informer with the same message,
+        // which should read as one problem, not sixty lines
+        Map<String, List<String>> byError = new LinkedHashMap<>();
+        List<String> syncing = new ArrayList<>();
         new TreeMap<>(informers).forEach((name, inf) -> {
-            if (inf.hasSynced() && !errors.containsKey(name)) return;
             String err = errors.get(name);
-            w.add(name + ": " + (err != null ? err : "đang đồng bộ…"));
+            if (err != null) byError.computeIfAbsent(err, k -> new ArrayList<>()).add(name);
+            else if (!inf.hasSynced()) syncing.add(name);
         });
+        List<String> w = new ArrayList<>();
+        byError.entrySet().stream().sorted((a, b) -> b.getValue().size() - a.getValue().size()).forEach(e -> {
+            List<String> names = e.getValue();
+            String who = names.size() <= 2 ? String.join(", ", names) : names.size() + " loại tài nguyên";
+            w.add(who + ": " + e.getKey());
+        });
+        if (!syncing.isEmpty())
+            w.add(SYNCING_PREFIX + (syncing.size() <= 3 ? String.join(", ", syncing) : syncing.size() + " loại tài nguyên"));
         return w;
     }
+
+    /** Prefix of the warnings() line listing informers that are merely still loading (not failing). */
+    public static final String SYNCING_PREFIX = "Đang đồng bộ: ";
 
     public String context() {
         var ctx = client.getConfiguration().getCurrentContext();

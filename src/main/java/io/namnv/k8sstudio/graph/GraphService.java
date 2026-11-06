@@ -75,6 +75,15 @@ public class GraphService {
         ingresses(g, ns);
         rbac(g, ns, all);
         policies(g, ns, pods);
+        Map<String, int[]> eps = endpointCounts();
+        quotas(g, ns);
+        replicationControllers(g, ns);
+        classes(g, all, pods);
+        admission(g, ns, all, eps);
+        apiServices(g, ns, all);
+        csrs(g, all);
+        csi(g, all);
+        leases(g, ns, pods);
         customResources(g, ns);
         owners(g);
         workloadMetrics(g, pods);
@@ -185,6 +194,12 @@ public class GraphService {
         Map<String, String> info = new LinkedHashMap<>();
         if (p.getStatus() != null && p.getStatus().getPodIP() != null) info.put("podIP", p.getStatus().getPodIP());
         if (p.getSpec().getNodeName() != null) info.put("node", p.getSpec().getNodeName());
+        // like kubectl's READY column: ready / total app containers (init containers are listed apart)
+        List<Container> appCtrs = nz(p.getSpec().getContainers());
+        long readyCtrs = p.getStatus() == null ? 0 : nz(p.getStatus().getContainerStatuses()).stream().filter(cs -> Boolean.TRUE.equals(cs.getReady())).count();
+        info.put("ready", readyCtrs + "/" + appCtrs.size());
+        int inits = nz(p.getSpec().getInitContainers()).size();
+        info.put("containers", appCtrs.stream().map(Container::getName).reduce((a, b) -> a + ", " + b).orElse("") + (inits > 0 ? " +" + inits + " init" : ""));
         info.put("restarts", String.valueOf(restarts(p)));
         if (p.getStatus() != null && p.getStatus().getQosClass() != null) info.put("qos", p.getStatus().getQosClass());
         var usage = metrics.pod(p.getMetadata().getNamespace(), p.getMetadata().getName());
@@ -207,6 +222,14 @@ public class GraphService {
         String sa = Objects.requireNonNullElse(p.getSpec().getServiceAccountName(), "default");
         g.ref(id, "ServiceAccount", pns, sa, "runs-as",
                 ClusterCache.get(cache.serviceAccounts, pns, sa) != null, "error", "ServiceAccount không tồn tại");
+
+        // pod -> PriorityClass / RuntimeClass (a missing RuntimeClass keeps the pod from starting)
+        String pcName = p.getSpec().getPriorityClassName();
+        if (pcName != null && !pcName.isBlank())
+            g.ref(id, "PriorityClass", null, pcName, "priority", ClusterCache.get(cache.priorityClasses, null, pcName) != null, "error", "PriorityClass không tồn tại");
+        String rcName = p.getSpec().getRuntimeClassName();
+        if (rcName != null && !rcName.isBlank())
+            g.ref(id, "RuntimeClass", null, rcName, "runtime", ClusterCache.get(cache.runtimeClasses, null, rcName) != null, "error", "RuntimeClass không tồn tại — pod không khởi động được");
 
         // pod -> image pull secrets
         for (LocalObjectReference ref : nz(p.getSpec().getImagePullSecrets())) {
@@ -388,6 +411,16 @@ public class GraphService {
             if (svc.getSpec().getClusterIP() != null) info.put("clusterIP", svc.getSpec().getClusterIP());
             if ("ExternalName".equals(type)) info.put("externalName", svc.getSpec().getExternalName());
             info.put("ports", ports(svc));
+            // the same, one field per column (port / target / protocol / nodePort), in port order
+            List<ServicePort> sps = nz(svc.getSpec().getPorts());
+            if (!sps.isEmpty()) {
+                info.put("port", sps.stream().map(sp -> String.valueOf(sp.getPort())).reduce((a, b) -> a + ", " + b).orElse(""));
+                info.put("targetPort", sps.stream().map(sp -> sp.getTargetPort() == null ? String.valueOf(sp.getPort())
+                        : sp.getTargetPort().getIntVal() != null ? String.valueOf(sp.getTargetPort().getIntVal()) : sp.getTargetPort().getStrVal()).reduce((a, b) -> a + ", " + b).orElse(""));
+                info.put("protocol", sps.stream().map(sp -> Objects.requireNonNullElse(sp.getProtocol(), "TCP")).distinct().reduce((a, b) -> a + ", " + b).orElse(""));
+                String nodePorts = sps.stream().filter(sp -> sp.getNodePort() != null).map(sp -> String.valueOf(sp.getNodePort())).reduce((a, b) -> a + ", " + b).orElse(null);
+                if (nodePorts != null) info.put("nodePort", nodePorts);
+            }
             if (svc.getStatus() != null && svc.getStatus().getLoadBalancer() != null) {
                 String lb = nz(svc.getStatus().getLoadBalancer().getIngress()).stream()
                         .map(i -> i.getIp() != null ? i.getIp() : i.getHostname()).filter(Objects::nonNull)
@@ -414,7 +447,7 @@ public class GraphService {
                 status = "ExternalName";
             } else if (selector != null && !selector.isEmpty()) {
                 info.put("endpoints", ep[0] + "/" + ep[1] + " sẵn sàng");
-                status = type + " · " + ep[0] + "/" + ep[1];
+                status = type + " · " + ep[0] + "/" + ep[1] + " endpoint";
                 if (matched == 0) { health = "warn"; reason = "không pod nào khớp selector"; }
                 else if (ep[0] == 0) { health = "error"; reason = "không có endpoint sẵn sàng"; }
                 else if (ep[0] < ep[1]) { health = "warn"; reason = (ep[1] - ep[0]) + " endpoint chưa sẵn sàng"; }
@@ -616,6 +649,9 @@ public class GraphService {
             int current = st == null ? 0 : nz(st.getCurrentReplicas()), desired = st == null ? 0 : nz(st.getDesiredReplicas());
             Map<String, String> info = new LinkedHashMap<>();
             info.put("replicas", current + " (min " + nz(spec.getMinReplicas()) + ", max " + spec.getMaxReplicas() + ")");
+            info.put("current", "" + current);
+            info.put("minReplicas", "" + (spec.getMinReplicas() == null ? 1 : spec.getMinReplicas()));
+            info.put("maxReplicas", "" + spec.getMaxReplicas());
             info.put("desired", "" + desired);
             for (MetricSpec m : nz(spec.getMetrics())) {
                 if (m.getResource() != null && m.getResource().getTarget() != null) {
@@ -655,8 +691,8 @@ public class GraphService {
             int allowed = st == null ? 0 : nz(st.getDisruptionsAllowed());
             int expected = st == null ? 0 : nz(st.getExpectedPods());
             Map<String, String> info = new LinkedHashMap<>();
-            if (pdb.getSpec().getMinAvailable() != null) info.put("minAvailable", pdb.getSpec().getMinAvailable().toString());
-            if (pdb.getSpec().getMaxUnavailable() != null) info.put("maxUnavailable", pdb.getSpec().getMaxUnavailable().toString());
+            if (pdb.getSpec().getMinAvailable() != null) info.put("minAvailable", ios(pdb.getSpec().getMinAvailable()));
+            if (pdb.getSpec().getMaxUnavailable() != null) info.put("maxUnavailable", ios(pdb.getSpec().getMaxUnavailable()));
             info.put("pods", (st == null ? 0 : nz(st.getCurrentHealthy())) + "/" + expected + " healthy");
             String health = expected == 0 ? "warn" : allowed == 0 ? "warn" : "ok";
             String reason = expected == 0 ? "không chọn pod nào" : allowed == 0 ? "không cho phép gián đoạn (drain sẽ bị chặn)" : null;
@@ -687,6 +723,391 @@ public class GraphService {
         }
     }
 
+    // ================================================================== quotas, classes, admission, certificates, APIs, CSI, leases
+
+    /** ResourceQuota (used / hard, % of the fullest), LimitRange (the defaults / bounds it injects). */
+    private void quotas(Builder g, String ns) {
+        for (ResourceQuota q : ClusterCache.list(cache.resourceQuotas, ns)) {
+            Map<String, Quantity> hard = q.getStatus() == null ? Map.of() : nz(q.getStatus().getHard());
+            Map<String, Quantity> used = q.getStatus() == null ? Map.of() : nz(q.getStatus().getUsed());
+            Map<String, String> info = new LinkedHashMap<>();
+            String worstKey = null;
+            double worst = -1;
+            for (String k : new TreeSet<>(hard.keySet())) {
+                double h = num(hard.get(k)), u = num(used.get(k));
+                int pct = h > 0 ? (int) Math.round(100 * u / h) : (u > 0 ? 100 : 0);
+                info.put(k, (used.get(k) == null ? "0" : used.get(k).toString()) + " / " + hard.get(k) + " (" + pct + "%)");
+                if (pct > worst) { worst = pct; worstKey = k; }
+            }
+            String health = worst >= 100 ? "error" : worst >= 90 ? "warn" : "ok";
+            String reason = worst >= 100 ? "hết quota " + worstKey + " — không tạo thêm được" : worst >= 90 ? "sắp hết quota " + worstKey : null;
+            String status = worstKey == null ? "chưa tính" : worstKey + " " + (int) worst + "%";
+            g.node(q, status, health, reason, info);
+        }
+        for (LimitRange lr : ClusterCache.list(cache.limitRanges, ns)) {
+            Map<String, String> info = new LinkedHashMap<>();
+            List<String> types = new ArrayList<>();
+            for (LimitRangeItem it : nz(lr.getSpec().getLimits())) {
+                types.add(it.getType());
+                putQ(info, it.getType() + " default request", it.getDefaultRequest());
+                putQ(info, it.getType() + " default limit", it.getDefault());
+                putQ(info, it.getType() + " min", it.getMin());
+                putQ(info, it.getType() + " max", it.getMax());
+                putQ(info, it.getType() + " max limit/request", it.getMaxLimitRequestRatio());
+            }
+            g.node(lr, String.join(", ", types), "ok", null, info);
+        }
+    }
+
+    private static void putQ(Map<String, String> info, String key, Map<String, Quantity> q) {
+        if (q != null && !q.isEmpty()) info.put(key, new TreeMap<>(q).entrySet().stream().map(e -> e.getKey() + " " + e.getValue())
+                .reduce((a, b) -> a + ", " + b).orElse(""));
+    }
+
+    private static double num(Quantity q) {
+        try { return q == null ? 0 : q.getNumericalAmount().doubleValue(); } catch (RuntimeException e) { return 0; }
+    }
+
+    /** the legacy ReplicationController: like a ReplicaSet (its pods hang under it through ownerReferences) */
+    private void replicationControllers(Builder g, String ns) {
+        for (ReplicationController rc : ClusterCache.list(cache.replicationControllers, ns)) {
+            int desired = nz(rc.getSpec().getReplicas()), ready = rc.getStatus() == null ? 0 : nz(rc.getStatus().getReadyReplicas());
+            Map<String, String> info = new LinkedHashMap<>();
+            info.put("replicas", ready + "/" + desired);
+            if (rc.getSpec().getTemplate() != null) info.put("images", images(rc.getSpec().getTemplate()));
+            String health = replicaHealth(ready, desired);
+            g.node(rc, ready + "/" + desired, health, health.equals("ok") || health.equals("unknown") ? null : "chưa đủ pod sẵn sàng", info);
+        }
+    }
+
+    /** PriorityClass / RuntimeClass: all of them in the all-namespaces view, otherwise those the shown pods use */
+    private void classes(Builder g, boolean all, List<Pod> pods) {
+        Set<String> pcs = new HashSet<>(), rcs = new HashSet<>();
+        pods.forEach(p -> { pcs.add(p.getSpec().getPriorityClassName()); rcs.add(p.getSpec().getRuntimeClassName()); });
+        for (var pc : cache.priorityClasses.getStore().list()) {
+            if (!all && !pcs.contains(pc.getMetadata().getName())) continue;
+            Map<String, String> info = new LinkedHashMap<>();
+            info.put("value", String.valueOf(pc.getValue()));
+            if (Boolean.TRUE.equals(pc.getGlobalDefault())) info.put("globalDefault", "true");
+            if (pc.getPreemptionPolicy() != null) info.put("preemptionPolicy", pc.getPreemptionPolicy());
+            g.node(pc, "giá trị " + pc.getValue() + (Boolean.TRUE.equals(pc.getGlobalDefault()) ? " · mặc định" : ""), "ok", null, info);
+        }
+        for (var rc : cache.runtimeClasses.getStore().list()) {
+            if (!all && !rcs.contains(rc.getMetadata().getName())) continue;
+            Map<String, String> info = new LinkedHashMap<>();
+            info.put("handler", rc.getHandler());
+            if (rc.getOverhead() != null) putQ(info, "overhead", rc.getOverhead().getPodFixed());
+            g.node(rc, "handler " + rc.getHandler(), "ok", null, info);
+        }
+    }
+
+    /** ready / total endpoints of every Service (EndpointSlices), keyed "ns/name" */
+    private Map<String, int[]> endpointCounts() {
+        Map<String, int[]> out = new HashMap<>();
+        for (EndpointSlice es : cache.endpointSlices.getStore().list()) {
+            String svc = nz(es.getMetadata().getLabels()).get("kubernetes.io/service-name");
+            if (svc == null) continue;
+            int[] c = out.computeIfAbsent(es.getMetadata().getNamespace() + "/" + svc, k -> new int[2]);
+            for (var ep : nz(es.getEndpoints())) {
+                c[1]++;
+                if (ep.getConditions() == null || !Boolean.FALSE.equals(ep.getConditions().getReady())) c[0]++;
+            }
+        }
+        return out;
+    }
+
+    private record Hook(String name, String failurePolicy, String svcNs, String svcName, Integer port, String url) {}
+
+    /**
+     * Admission webhooks: the classic "nothing can be created in this namespace" cause. A webhook whose Service has no
+     * ready endpoint rejects every matching request (failurePolicy Fail) or is silently skipped (Ignore).
+     * Shown in the all-namespaces view, and in a namespace that hosts one of their Services.
+     */
+    private void admission(Builder g, String ns, boolean all, Map<String, int[]> eps) {
+        List<HasMetadata> configs = new ArrayList<>();
+        configs.addAll(cache.mutatingWebhooks.getStore().list());
+        configs.addAll(cache.validatingWebhooks.getStore().list());
+        for (HasMetadata cfg : configs) {
+            List<Hook> hooks = new ArrayList<>();
+            if (cfg instanceof io.fabric8.kubernetes.api.model.admissionregistration.v1.MutatingWebhookConfiguration m)
+                for (var w : nz(m.getWebhooks())) hooks.add(hook(w.getName(), w.getFailurePolicy(), w.getClientConfig()));
+            if (cfg instanceof io.fabric8.kubernetes.api.model.admissionregistration.v1.ValidatingWebhookConfiguration v)
+                for (var w : nz(v.getWebhooks())) hooks.add(hook(w.getName(), w.getFailurePolicy(), w.getClientConfig()));
+            if (!all && hooks.stream().noneMatch(h -> ns.equals(h.svcNs()))) continue;
+            Map<String, String> info = new LinkedHashMap<>();
+            info.put("webhooks", "" + hooks.size());
+            info.put("failurePolicy", hooks.stream().map(Hook::failurePolicy).distinct().reduce((a, b) -> a + ", " + b).orElse("Fail"));
+            info.put("targets", hooks.stream().map(h -> h.svcName() != null ? "svc " + h.svcNs() + "/" + h.svcName() + (h.port() != null ? ":" + h.port() : "") : h.url())
+                    .distinct().reduce((a, b) -> a + ", " + b).orElse(""));
+            String health = "ok", reason = null;
+            for (Hook h : hooks) {
+                if (h.svcName() == null) continue;
+                boolean exists = ClusterCache.get(cache.services, h.svcNs(), h.svcName()) != null;
+                int[] ep = eps.getOrDefault(h.svcNs() + "/" + h.svcName(), new int[2]);
+                boolean fail = !"Ignore".equals(h.failurePolicy());
+                if (!exists || ep[0] == 0) {
+                    String why = !exists ? "Service của webhook không tồn tại" : "Service của webhook không có endpoint sẵn sàng";
+                    if (fail) { health = "error"; reason = why + " → request khớp rule bị từ chối"; }
+                    else if (!"error".equals(health)) { health = "warn"; reason = why + " → webhook bị bỏ qua"; }
+                }
+            }
+            String id = g.node(cfg, hooks.size() + " webhook", health, reason, info);
+            for (Hook h : hooks)
+                if (h.svcName() != null)
+                    g.ref(id, "Service", h.svcNs(), h.svcName(), "calls", ClusterCache.get(cache.services, h.svcNs(), h.svcName()) != null,
+                            "Ignore".equals(h.failurePolicy()) ? "warn" : "error", "Service của webhook không tồn tại");
+        }
+        if (!all) return;
+        for (var p : cache.admissionPolicies.getStore().list()) {
+            Map<String, String> info = new LinkedHashMap<>();
+            info.put("validations", "" + nz(p.getSpec().getValidations()).size());
+            if (p.getSpec().getFailurePolicy() != null) info.put("failurePolicy", p.getSpec().getFailurePolicy());
+            if (p.getSpec().getParamKind() != null) info.put("paramKind", p.getSpec().getParamKind().getKind());
+            int warnings = p.getStatus() == null || p.getStatus().getTypeChecking() == null ? 0 : nz(p.getStatus().getTypeChecking().getExpressionWarnings()).size();
+            g.node(p, nz(p.getSpec().getValidations()).size() + " validation", warnings > 0 ? "warn" : "ok",
+                    warnings > 0 ? warnings + " biểu thức CEL có cảnh báo kiểu" : null, info);
+        }
+        for (var b : cache.admissionPolicyBindings.getStore().list()) {
+            String policy = b.getSpec().getPolicyName();
+            Map<String, String> info = new LinkedHashMap<>();
+            info.put("policy", policy);
+            info.put("actions", String.join(", ", nz(b.getSpec().getValidationActions())));
+            boolean exists = ClusterCache.get(cache.admissionPolicies, null, policy) != null;
+            String id = g.node(b, String.join(", ", nz(b.getSpec().getValidationActions())), exists ? "ok" : "error",
+                    exists ? null : "policy " + policy + " không tồn tại — binding không có tác dụng", info);
+            g.ref(id, "ValidatingAdmissionPolicy", null, policy, "binds", exists, "error", "ValidatingAdmissionPolicy không tồn tại");
+        }
+    }
+
+    private static Hook hook(String name, String failurePolicy, io.fabric8.kubernetes.api.model.admissionregistration.v1.WebhookClientConfig cc) {
+        var svc = cc == null ? null : cc.getService();
+        return new Hook(name, failurePolicy == null ? "Fail" : failurePolicy, svc == null ? null : svc.getNamespace(),
+                svc == null ? null : svc.getName(), svc == null ? null : svc.getPort(), cc == null ? null : cc.getUrl());
+    }
+
+    /** Aggregated APIs (metrics.k8s.io, custom.metrics…): when one is unavailable, kubectl top / HPA / discovery break. */
+    @SuppressWarnings("unchecked")
+    private void apiServices(Builder g, String ns, boolean all) {
+        for (GenericKubernetesResource a : cache.apiServices.getStore().list()) {
+            Map<String, Object> spec = (Map<String, Object>) a.getAdditionalProperties().getOrDefault("spec", Map.of());
+            if (!(spec.get("service") instanceof Map<?, ?> svc)) continue; // local (built-in) group versions are noise
+            String sns = String.valueOf(svc.get("namespace")), sname = String.valueOf(svc.get("name"));
+            if (!all && !sns.equals(ns)) continue;
+            if (a.getKind() == null) a.setKind("APIService");
+            String status = "Available", health = "ok", reason = null;
+            if (a.getAdditionalProperties().get("status") instanceof Map<?, ?> st && st.get("conditions") instanceof List<?> conds)
+                for (Object o : conds)
+                    if (o instanceof Map<?, ?> c && "Available".equals(c.get("type")) && !"True".equals(String.valueOf(c.get("status")))) {
+                        status = "Unavailable"; health = "error";
+                        reason = c.get("reason") + (c.get("message") != null ? ": " + shortMsg(String.valueOf(c.get("message"))) : "");
+                    }
+            Map<String, String> info = new LinkedHashMap<>();
+            info.put("api", spec.get("group") + "/" + spec.get("version"));
+            info.put("service", sns + "/" + sname);
+            String id = g.node(a, status, health, reason, info);
+            g.ref(id, "Service", sns, sname, "calls", ClusterCache.get(cache.services, sns, sname) != null, "error", "Service của API không tồn tại");
+        }
+    }
+
+    /** CSRs: pending ones need someone to approve them (kubelet serving certs, user certs). All-namespaces view only. */
+    private void csrs(Builder g, boolean all) {
+        if (!all) return;
+        for (var csr : cache.csrs.getStore().list()) {
+            List<String> conds = csr.getStatus() == null ? List.of() : nz(csr.getStatus().getConditions()).stream().map(c -> c.getType()).toList();
+            boolean issued = csr.getStatus() != null && csr.getStatus().getCertificate() != null && !csr.getStatus().getCertificate().isEmpty();
+            String status = conds.contains("Denied") ? "Denied" : conds.contains("Failed") ? "Failed" : issued ? "Issued" : conds.contains("Approved") ? "Approved" : "Pending";
+            String health = switch (status) { case "Denied", "Failed" -> "error"; case "Pending" -> "warn"; default -> "ok"; };
+            Map<String, String> info = new LinkedHashMap<>();
+            info.put("signer", csr.getSpec().getSignerName());
+            if (csr.getSpec().getUsername() != null) info.put("username", csr.getSpec().getUsername());
+            info.put("usages", String.join(", ", nz(csr.getSpec().getUsages())));
+            g.node(csr, status, health, "Pending".equals(status) ? "chờ duyệt (kubectl certificate approve)" : null, info);
+        }
+    }
+
+    /** VolumeAttachment (PV ↔ node, attach errors), CSIDriver (← StorageClass provisioner), CSINode (drivers per node). */
+    private void csi(Builder g, boolean all) {
+        for (var va : cache.volumeAttachments.getStore().list()) {
+            String pv = va.getSpec().getSource() == null ? null : va.getSpec().getSource().getPersistentVolumeName();
+            String pvId = pv == null ? null : Builder.id("PersistentVolume", null, pv);
+            if (!all && (pvId == null || !g.nodes.containsKey(pvId))) continue;
+            var st = va.getStatus();
+            boolean attached = st != null && Boolean.TRUE.equals(st.getAttached());
+            String err = st == null ? null : st.getAttachError() != null ? st.getAttachError().getMessage()
+                    : st.getDetachError() != null ? st.getDetachError().getMessage() : null;
+            Map<String, String> info = new LinkedHashMap<>();
+            info.put("attacher", va.getSpec().getAttacher());
+            info.put("node", va.getSpec().getNodeName());
+            if (pv != null) info.put("pv", pv);
+            String id = g.node(va, attached ? "attached" : "chưa attach", err != null ? "error" : attached ? "ok" : "warn",
+                    err != null ? shortMsg(err) : null, info);
+            if (pv != null) g.ref(id, "PersistentVolume", null, pv, "attaches", ClusterCache.get(cache.pvs, null, pv) != null, "error", "PV không tồn tại");
+            g.edge(id, Builder.id("Node", null, va.getSpec().getNodeName()), "attaches");
+        }
+        Set<String> provisioners = new HashSet<>();
+        g.objects.values().forEach(o -> { if (o instanceof StorageClass sc) provisioners.add(sc.getProvisioner()); });
+        for (var d : cache.csiDrivers.getStore().list()) {
+            if (!all && !provisioners.contains(d.getMetadata().getName())) continue;
+            Map<String, String> info = new LinkedHashMap<>();
+            info.put("attachRequired", String.valueOf(d.getSpec().getAttachRequired()));
+            info.put("podInfoOnMount", String.valueOf(d.getSpec().getPodInfoOnMount()));
+            info.put("modes", String.join(", ", nz(d.getSpec().getVolumeLifecycleModes())));
+            String id = g.node(d, "CSI driver", "ok", null, info);
+            g.objects.values().stream().filter(o -> o instanceof StorageClass sc && d.getMetadata().getName().equals(sc.getProvisioner()))
+                    .toList().forEach(sc -> g.edge(Builder.id(sc), id, "driver"));
+        }
+        if (!all) return;
+        for (var cn : cache.csiNodes.getStore().list()) {
+            List<String> drivers = nz(cn.getSpec().getDrivers()).stream().map(d -> d.getName()).toList();
+            String id = g.node(cn, drivers.size() + " driver", "ok", null, Map.of("drivers", String.join(", ", drivers)));
+            g.edge(id, Builder.id("Node", null, cn.getMetadata().getName()), "runs-on");
+        }
+    }
+
+    /**
+     * Leader-election leases (controllers, operators): who holds them, and whether the holder stopped renewing
+     * (a crashed leader). Node heartbeats (kube-node-lease) are left out.
+     */
+    private void leases(Builder g, String ns, List<Pod> pods) {
+        for (var l : ClusterCache.list(cache.leases, ns)) {
+            if ("kube-node-lease".equals(l.getMetadata().getNamespace())) continue;
+            var spec = l.getSpec();
+            String holder = spec.getHolderIdentity();
+            Map<String, String> info = new LinkedHashMap<>();
+            info.put("holder", holder == null ? "(không ai)" : holder);
+            if (spec.getLeaseDurationSeconds() != null) info.put("duration", spec.getLeaseDurationSeconds() + "s");
+            if (spec.getLeaseTransitions() != null) info.put("transitions", "" + spec.getLeaseTransitions());
+            String health = "ok", reason = null;
+            if (holder == null || holder.isBlank()) { health = "unknown"; }
+            else if (spec.getRenewTime() != null && spec.getLeaseDurationSeconds() != null) {
+                long age = Instant.now().getEpochSecond() - spec.getRenewTime().toEpochSecond();
+                if (age > 3L * spec.getLeaseDurationSeconds() + 60) { health = "warn"; reason = "holder không còn gia hạn lease"; }
+            }
+            String id = g.node(l, holder == null || holder.isBlank() ? "trống" : "giữ bởi " + shortHolder(holder), health, reason, info);
+            if (holder != null)
+                for (Pod p : pods)
+                    if (p.getMetadata().getNamespace().equals(l.getMetadata().getNamespace()) && holder.startsWith(p.getMetadata().getName()))
+                        g.edge(id, Builder.id(p), "held");
+        }
+    }
+
+    private static String shortHolder(String h) {
+        int us = h.indexOf('_');
+        String s = us > 0 ? h.substring(0, us) : h;
+        return s.length() > 40 ? s.substring(0, 39) + "…" : s;
+    }
+
+    // ================================================================== Gateway API / Traefik routes
+
+    private static final String GATEWAY_GROUP = "gateway.networking.k8s.io";
+    private static final Set<String> ROUTE_KINDS = Set.of("HTTPRoute", "GRPCRoute", "TCPRoute", "TLSRoute", "UDPRoute");
+    private static final Set<String> TRAEFIK_GROUPS = Set.of("traefik.io", "traefik.containo.us");
+    private static final Set<String> TRAEFIK_ROUTES = Set.of("IngressRoute", "IngressRouteTCP", "IngressRouteUDP");
+    private static final Pattern TRAEFIK_HOST = Pattern.compile("Host(?:SNI)?\\(([^)]*)\\)");
+
+    /** Cluster-scoped custom resources the namespaced ones point at (a Gateway's GatewayClass), so they get a card. */
+    @SuppressWarnings("unchecked")
+    private static Set<String> referencedClusterCustom(List<GenericKubernetesResource> namespaced) {
+        Set<String> out = new HashSet<>();
+        for (var r : namespaced)
+            if ("Gateway".equals(r.getKind()) && r.getAdditionalProperties().get("spec") instanceof Map<?, ?> spec && spec.get("gatewayClassName") != null)
+                out.add("GatewayClass/" + spec.get("gatewayClassName"));
+        return out;
+    }
+
+    /** Edges + health of Gateway API and Traefik objects (the generic custom-resource pass only knows ownerReferences). */
+    @SuppressWarnings("unchecked")
+    private void routing(Builder g, GenericKubernetesResource r, String group, String id) {
+        String kind = r.getKind(), rns = r.getMetadata().getNamespace();
+        Map<String, Object> spec = r.getAdditionalProperties().get("spec") instanceof Map<?, ?> m ? (Map<String, Object>) m : Map.of();
+        Map<String, Object> status = r.getAdditionalProperties().get("status") instanceof Map<?, ?> m ? (Map<String, Object>) m : Map.of();
+        if (GATEWAY_GROUP.equals(group)) {
+            if ("Gateway".equals(kind)) {
+                String cls = str(spec.get("gatewayClassName"));
+                if (cls != null) g.ref(id, "GatewayClass", null, cls, "class", cache.find("GatewayClass", null, cls).isPresent(), "error", "GatewayClass không tồn tại");
+                List<String> listeners = list(spec.get("listeners")).stream().map(l -> str(l.get("protocol")) + ":" + str(l.get("port"))
+                        + (l.get("hostname") != null ? " " + l.get("hostname") : "")).toList();
+                if (!listeners.isEmpty()) g.addInfo(id, "listeners", String.join(", ", listeners));
+                String addr = list(status.get("addresses")).stream().map(a -> str(a.get("value"))).filter(Objects::nonNull).reduce((a, b) -> a + ", " + b).orElse(null);
+                if (addr != null) g.addInfo(id, "address", addr);
+                conditionHealth(g, id, list(status.get("conditions")), Set.of("Accepted", "Programmed"), addr != null ? "Programmed · " + addr : "Programmed");
+            } else if ("GatewayClass".equals(kind)) {
+                g.addInfo(id, "controller", String.valueOf(spec.get("controllerName")));
+                conditionHealth(g, id, list(status.get("conditions")), Set.of("Accepted"), "Accepted");
+            } else if (ROUTE_KINDS.contains(kind)) {
+                for (Map<String, Object> p : list(spec.get("parentRefs"))) {
+                    String pk = Objects.requireNonNullElse(str(p.get("kind")), "Gateway"), pns = Objects.requireNonNullElse(str(p.get("namespace")), rns), pn = str(p.get("name"));
+                    if (pn != null) g.ref(id, pk, pns, pn, "parent", cache.find(pk, pns, pn).isPresent(), "error", pk + " không tồn tại");
+                }
+                for (Map<String, Object> rule : list(spec.get("rules")))
+                    for (Map<String, Object> b : list(rule.get("backendRefs"))) backend(g, id, b, rns);
+                List<String> hosts = spec.get("hostnames") instanceof List<?> hl ? hl.stream().map(String::valueOf).toList() : List.of();
+                if (!hosts.isEmpty()) g.addInfo(id, "hosts", String.join(", ", hosts));
+                // route status is per parent: Accepted (attached to the Gateway) and ResolvedRefs (backends exist)
+                List<Map<String, Object>> conds = new ArrayList<>();
+                list(status.get("parents")).forEach(p -> conds.addAll(list(p.get("conditions"))));
+                conditionHealth(g, id, conds, Set.of("Accepted", "ResolvedRefs"), "Accepted");
+            }
+        } else if (TRAEFIK_GROUPS.contains(group) && (kind.equals("Middleware") || kind.equals("MiddlewareTCP"))) {
+            // the middleware type is its only spec key (stripPrefix, basicAuth, redirectScheme…)
+            g.update(id, String.join(", ", spec.keySet()), "ok", null);
+        } else if (TRAEFIK_GROUPS.contains(group) && TRAEFIK_ROUTES.contains(kind)) {
+            List<String> hosts = new ArrayList<>();
+            for (Map<String, Object> route : list(spec.get("routes"))) {
+                if (route.get("match") instanceof String match) {
+                    Matcher hm = TRAEFIK_HOST.matcher(match);
+                    while (hm.find()) hosts.add(hm.group(1).replaceAll("[`\"']", ""));
+                }
+                for (Map<String, Object> s : list(route.get("services"))) backend(g, id, s, rns);
+                for (Map<String, Object> mw : list(route.get("middlewares"))) {
+                    String mn = str(mw.get("name")), mns = Objects.requireNonNullElse(str(mw.get("namespace")), rns);
+                    if (mn != null && !mn.contains("@")) // "name@provider" = defined outside Kubernetes
+                        g.ref(id, "Middleware", mns, mn, "middleware", cache.find("Middleware", mns, mn).isPresent(), "error", "Middleware không tồn tại");
+                }
+            }
+            if (!hosts.isEmpty()) g.addInfo(id, "hosts", String.join(", ", hosts));
+            if (spec.get("entryPoints") instanceof List<?> eps) g.addInfo(id, "entryPoints", eps.stream().map(String::valueOf).reduce((a, b) -> a + ", " + b).orElse(""));
+            if (spec.get("tls") instanceof Map<?, ?> tls && tls.get("secretName") != null) {
+                String sec = String.valueOf(tls.get("secretName"));
+                g.ref(id, "Secret", rns, sec, "tls", ClusterCache.get(cache.secrets, rns, sec) != null, "error", "Secret TLS không tồn tại");
+            }
+            Graph.Node n = g.nodes.get(id);
+            if (n != null && n.status().isEmpty()) g.update(id, hosts.isEmpty() ? kind : String.join(", ", hosts), n.health(), null);
+        }
+    }
+
+    /** a backendRef / Traefik service: Service by default, or any other kind (TraefikService…) */
+    private void backend(Builder g, String from, Map<String, Object> b, String defaultNs) {
+        String kind = Objects.requireNonNullElse(str(b.get("kind")), "Service"), name = str(b.get("name"));
+        String bns = Objects.requireNonNullElse(str(b.get("namespace")), defaultNs);
+        if (name == null || name.contains("@")) return;
+        boolean exists = "Service".equals(kind) ? ClusterCache.get(cache.services, bns, name) != null : cache.find(kind, bns, name).isPresent();
+        g.ref(from, kind, bns, name, "routes", exists, "error", kind + " đích không tồn tại");
+    }
+
+    /** first wanted condition that isn't True → error with its reason; all True → ok with okStatus */
+    private static void conditionHealth(Builder g, String id, List<Map<String, Object>> conds, Set<String> wanted, String okStatus) {
+        if (conds.isEmpty()) { g.update(id, "chưa có trạng thái", "unknown", "controller chưa xử lý (chưa có status)"); return; }
+        for (Map<String, Object> c : conds) {
+            if (!wanted.contains(str(c.get("type")))) continue;
+            if (!"True".equals(str(c.get("status")))) {
+                // "Pending" = no controller has picked it up yet: a warning, not a failure
+                g.update(id, "Not" + c.get("type"), "Pending".equals(str(c.get("reason"))) ? "warn" : "error",
+                        str(c.get("reason")) + (c.get("message") != null ? ": " + shortMsg(str(c.get("message"))) : ""));
+                return;
+            }
+        }
+        g.update(id, okStatus, "ok", null);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static List<Map<String, Object>> list(Object o) {
+        if (!(o instanceof List<?> l)) return List.of();
+        return l.stream().filter(x -> x instanceof Map).map(x -> (Map<String, Object>) x).toList();
+    }
+
+    private static String str(Object o) { return o == null ? null : String.valueOf(o); }
+
     // ================================================================== custom resources
 
     private void customResources(Builder g, String ns) {
@@ -694,16 +1115,42 @@ public class GraphService {
         // cluster-scoped custom resources are only interesting when something we show points at them
         Set<String> wantedOwners = new HashSet<>();
         g.objects.values().forEach(o -> nz(o.getMetadata().getOwnerReferences()).forEach(r -> wantedOwners.add(r.getUid())));
+        List<GenericKubernetesResource> namespaced = new ArrayList<>();
+        for (ClusterCache.CustomType t : cache.customTypes())
+            if (t.namespaced()) ClusterCache.list(t.informer(), ns).forEach(r -> { if (r.getKind() == null) r.setKind(t.kind()); namespaced.add(r); });
+        Set<String> referenced = referencedClusterCustom(namespaced);
+        List<String[]> routed = new ArrayList<>(); // [id, group] of objects whose relations we know (Gateway API, Traefik)
         for (ClusterCache.CustomType t : cache.customTypes()) {
             List<GenericKubernetesResource> items = t.namespaced()
                     ? ClusterCache.list(t.informer(), ns)
-                    : t.informer().getStore().list().stream().filter(o -> wantedOwners.contains(o.getMetadata().getUid())).toList();
+                    : t.informer().getStore().list().stream().filter(o -> wantedOwners.contains(o.getMetadata().getUid())
+                            || referenced.contains(t.kind() + "/" + o.getMetadata().getName())).toList();
             for (GenericKubernetesResource r : items) {
                 if (r.getKind() == null) r.setKind(t.kind());
                 String[] sh = customStatus(r);
-                g.custom(r, t.group(), sh[0], sh[1], sh[2], Map.of("apiVersion", t.group() + "/" + t.version()));
+                String id = g.custom(r, t.group(), sh[0], sh[1], sh[2], new LinkedHashMap<>(Map.of("apiVersion", t.group() + "/" + t.version())));
+                if (GATEWAY_GROUP.equals(t.group()) || TRAEFIK_GROUPS.contains(t.group())) routed.add(new String[]{id, t.group()});
             }
         }
+        // placeholders for missing Gateway API / Traefik objects carry the group too, so they group with the real ones
+        Runnable groupMissing = () -> new ArrayList<>(g.nodes.values()).forEach(n -> {
+            if (!n.missing() || n.group() != null) return;
+            String grp = Set.of("Gateway", "GatewayClass", "ReferenceGrant").contains(n.kind()) || ROUTE_KINDS.contains(n.kind()) ? GATEWAY_GROUP
+                    : Set.of("Middleware", "MiddlewareTCP", "TraefikService").contains(n.kind()) ? "traefik.io" : null;
+            if (grp != null) g.nodes.put(n.id(), new Graph.Node(n.id(), n.kind(), grp, n.name(), n.namespace(), n.status(), n.health(), n.reason(),
+                    true, n.info(), n.labels(), n.created()));
+        });
+        for (String[] r : routed) {
+            routing(g, (GenericKubernetesResource) g.objects.get(r[0]), r[1], r[0]);
+            // a route / gateway pointing at something that doesn't exist is broken, whatever its own status says
+            List<String> broken = g.edges.stream().filter(e -> e.source().equals(r[0]) && g.nodes.containsKey(e.target()) && g.nodes.get(e.target()).missing())
+                    .map(e -> g.nodes.get(e.target()).kind() + " " + g.nodes.get(e.target()).name()).toList();
+            Graph.Node n = g.nodes.get(r[0]);
+            if (!broken.isEmpty() && n != null && !"error".equals(n.health()))
+                g.update(r[0], n.status().isEmpty() || n.status().equals("chưa có trạng thái") ? "tham chiếu gãy" : n.status(), "error",
+                        "không tồn tại: " + String.join(", ", broken));
+        }
+        groupMissing.run();
     }
 
     @SuppressWarnings("unchecked")
@@ -990,6 +1437,7 @@ public class GraphService {
     }
 
     private static int nz(Integer i) { return i == null ? 0 : i; }
+    private static String ios(IntOrString v) { return v == null ? "" : v.getIntVal() != null ? String.valueOf(v.getIntVal()) : v.getStrVal(); }
     private static <T> List<T> nz(List<T> l) { return l == null ? List.of() : l; }
     private static <K, V> Map<K, V> nz(Map<K, V> m) { return m == null ? Map.of() : m; }
 
@@ -1043,7 +1491,7 @@ public class GraphService {
         String missing(String kind, String ns, String name, String health, String why) {
             String id = id(kind, ns, name);
             nodes.putIfAbsent(id, new Graph.Node(id, kind, null, name, ns, "không tồn tại", health, why, true,
-                    Map.of("lỗi", why), Map.of(), null));
+                    new LinkedHashMap<>(Map.of("lỗi", why)), Map.of(), null));
             return id;
         }
 
@@ -1071,7 +1519,15 @@ public class GraphService {
 
         void addInfo(String id, String key, String value) {
             Graph.Node n = nodes.get(id);
-            if (n != null) n.info().put(key, value);
+            if (n == null) return;
+            try {
+                n.info().put(key, value);
+            } catch (UnsupportedOperationException e) { // a placeholder node built with Map.of(): copy it
+                Map<String, String> info = new LinkedHashMap<>(n.info());
+                info.put(key, value);
+                nodes.put(id, new Graph.Node(n.id(), n.kind(), n.group(), n.name(), n.namespace(), n.status(), n.health(), n.reason(),
+                        n.missing(), info, n.labels(), n.created()));
+            }
         }
 
         void edge(String source, String target, String type) {

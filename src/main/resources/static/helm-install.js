@@ -20,7 +20,7 @@ async function openRepos() {
         : '<p class="muted">Chưa có repo nào.</p>'}
       <div class="hr-add"><input id="repoName" placeholder="tên (vd. bitnami)" autocomplete="off"><input id="repoUrl" placeholder="https://charts.example.com hoặc oci://…" autocomplete="off">
         <button class="btn sm primary" id="repoAdd">Thêm</button></div>
-      <p class="muted small">Dùng chung cấu hình repo với lệnh <code>helm</code> trên máy chạy K8s Studio.</p>
+      <p class="muted small">Dùng chung cấu hình repo với lệnh <code>helm</code> trên máy chạy Kubemap.</p>
     </div>
     <div class="m-foot"><button class="btn" id="repoUpdate">Cập nhật index (helm repo update)</button><button class="btn" data-close>Đóng</button></div>`;
   let list = [];

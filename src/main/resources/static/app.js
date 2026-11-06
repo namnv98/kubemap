@@ -1,5 +1,5 @@
 'use strict';
-/* K8s Studio — topology graph, detail panel, all-namespaces overview. logs.js (pod logs) loads after this file. */
+/* Kubemap — topology graph, detail panel, all-namespaces overview. logs.js (pod logs) loads after this file. */
 
 /* ================= config ================= */
 const ICONS = {
@@ -27,7 +27,31 @@ const ICONS = {
   IngressClass: '<path d="M3 21h18M5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16"/><path d="M14 12h.01"/>',
   Custom: '<path d="M10 3h4v2.5a2 2 0 1 0 4 0V3h3v7h-2.5a2 2 0 1 0 0 4H21v7h-7v-2.5a2 2 0 1 0-4 0V21H3v-7h2.5a2 2 0 1 0 0-4H3V3z"/>',
 };
+Object.assign(ICONS, {
+  ResourceQuota: '<path d="M12 3a9 9 0 1 0 9 9h-9z"/><path d="M15 3.5A9 9 0 0 1 20.5 9H15z"/>',
+  LimitRange: '<path d="M4 7h16M4 17h16"/><path d="M8 4v6M16 14v6"/>',
+  ReplicationController: '<rect x="3" y="8" width="13" height="13" rx="2"/><path d="M8 8V5a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-3"/>',
+  PriorityClass: '<path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/>',
+  RuntimeClass: '<rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M1 9h3M1 15h3M20 9h3M20 15h3"/>',
+  MutatingWebhookConfiguration: '<path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/><path d="M17 17l4 4"/>',
+  ValidatingWebhookConfiguration: '<path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/>',
+  ValidatingAdmissionPolicy: '<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 9h6M9 13h6"/>',
+  ValidatingAdmissionPolicyBinding: '<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M10 14a2 2 0 0 0 3 0l2-2a2 2 0 0 0-3-3"/>',
+  CertificateSigningRequest: '<rect x="3" y="4" width="18" height="13" rx="2"/><circle cx="12" cy="10" r="2.5"/><path d="M10 13l-1 7 3-2 3 2-1-7"/>',
+  APIService: '<path d="M8 3H6a2 2 0 0 0-2 2v4l-2 3 2 3v4a2 2 0 0 0 2 2h2M16 3h2a2 2 0 0 1 2 2v4l2 3-2 3v4a2 2 0 0 1-2 2h-2"/>',
+  VolumeAttachment: '<ellipse cx="9" cy="6" rx="6" ry="2.5"/><path d="M3 6v8c0 1.4 2.7 2.5 6 2.5M15 6v4"/><path d="M15 14h7M18.5 10.5L22 14l-3.5 3.5"/>',
+  CSIDriver: '<rect x="3" y="7" width="18" height="10" rx="2"/><path d="M7 7V4M12 7V4M17 7V4M7 17v3M12 17v3M17 17v3"/>',
+  CSINode: '<rect x="3" y="3" width="18" height="7" rx="2"/><rect x="3" y="14" width="18" height="7" rx="2"/><path d="M15 6.5h3M15 17.5h3"/>',
+  Lease: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/><path d="M5 5l2 2"/>',
+  Gateway: '<path d="M3 21V9l9-6 9 6v12"/><path d="M9 21v-7h6v7"/>',
+  GatewayClass: '<path d="M3 21V9l9-6 9 6v12z"/><path d="M8 13h8M8 17h8"/>',
+  HTTPRoute: '<circle cx="5" cy="6" r="2.5"/><circle cx="19" cy="18" r="2.5"/><path d="M7.5 6H14a4 4 0 0 1 0 8h-4a4 4 0 0 0 0 8"/>',
+  Middleware: '<path d="M4 6h16M4 12h16M4 18h16"/><circle cx="9" cy="6" r="1.8"/><circle cx="15" cy="12" r="1.8"/><circle cx="7" cy="18" r="1.8"/>',
+});
+ICONS.GRPCRoute = ICONS.TCPRoute = ICONS.TLSRoute = ICONS.UDPRoute = ICONS.IngressRoute = ICONS.IngressRouteTCP = ICONS.IngressRouteUDP = ICONS.HTTPRoute;
+ICONS.MiddlewareTCP = ICONS.Middleware; ICONS.TraefikService = ICONS.Service;
 ICONS.Role = ICONS.ClusterRole = ICONS.RBAC;
+ICONS.Quota = ICONS.ResourceQuota; ICONS.Admission = ICONS.ValidatingWebhookConfiguration; ICONS.CSI = ICONS.CSIDriver; ICONS.Scheduling = ICONS.PriorityClass;
 ICONS.ClusterRoleBinding = ICONS.RoleBinding;
 
 const KINDS = {
@@ -55,9 +79,42 @@ const KINDS = {
   NetworkPolicy:           { label: 'NetworkPolicy', color: '#f97316' },
   IngressClass:            { label: 'IngressClass', color: '#c084fc' },
   Node:                    { label: 'Node',        color: '#a8a29e' },
+  ReplicationController:   { label: 'ReplicationController', color: '#64748b' },
+  ResourceQuota:           { label: 'ResourceQuota', color: '#10b981' },
+  LimitRange:              { label: 'LimitRange',  color: '#34d399' },
+  PriorityClass:           { label: 'PriorityClass', color: '#fbbf24' },
+  RuntimeClass:            { label: 'RuntimeClass', color: '#a3a3a3' },
+  MutatingWebhookConfiguration:   { label: 'MutatingWebhook', color: '#f472b6' },
+  ValidatingWebhookConfiguration: { label: 'ValidatingWebhook', color: '#ec4899' },
+  ValidatingAdmissionPolicy:        { label: 'AdmissionPolicy', color: '#db2777' },
+  ValidatingAdmissionPolicyBinding: { label: 'PolicyBinding', color: '#f9a8d4' },
+  APIService:              { label: 'APIService',  color: '#38bdf8' },
+  CertificateSigningRequest: { label: 'CSR',       color: '#facc15' },
+  VolumeAttachment:        { label: 'VolumeAttachment', color: '#a5b4fc' },
+  CSIDriver:               { label: 'CSIDriver',   color: '#7c3aed' },
+  CSINode:                 { label: 'CSINode',     color: '#78716c' },
+  Lease:                   { label: 'Lease',       color: '#94a3b8' },
+};
+/* well-known custom resources (Gateway API, Traefik): own colours / icons / columns instead of the generic "Custom" look */
+const KNOWN_CR = {
+  Gateway: { label: 'Gateway', color: '#8b5cf6' }, GatewayClass: { label: 'GatewayClass', color: '#a78bfa' },
+  HTTPRoute: { label: 'HTTPRoute', color: '#c084fc' }, GRPCRoute: { label: 'GRPCRoute', color: '#c084fc' },
+  TCPRoute: { label: 'TCPRoute', color: '#c084fc' }, TLSRoute: { label: 'TLSRoute', color: '#c084fc' }, UDPRoute: { label: 'UDPRoute', color: '#c084fc' },
+  IngressRoute: { label: 'IngressRoute', color: '#a371f7' }, IngressRouteTCP: { label: 'IngressRouteTCP', color: '#a371f7' },
+  IngressRouteUDP: { label: 'IngressRouteUDP', color: '#a371f7' },
+  Middleware: { label: 'Middleware', color: '#2dd4bf' }, MiddlewareTCP: { label: 'MiddlewareTCP', color: '#2dd4bf' },
+  TraefikService: { label: 'TraefikService', color: '#3b82f6' },
 };
 const CUSTOM = { label: 'Custom', color: '#f472b6' };
 const RBAC_KINDS = ['Role', 'RoleBinding', 'ClusterRole', 'ClusterRoleBinding'];
+/* kinds that share one filter chip */
+const CHIP_GROUP = {
+  ResourceQuota: 'Quota', LimitRange: 'Quota',
+  PriorityClass: 'Scheduling', RuntimeClass: 'Scheduling',
+  MutatingWebhookConfiguration: 'Admission', ValidatingWebhookConfiguration: 'Admission', ValidatingAdmissionPolicy: 'Admission',
+  ValidatingAdmissionPolicyBinding: 'Admission', APIService: 'Admission',
+  VolumeAttachment: 'CSI', CSIDriver: 'CSI', CSINode: 'CSI',
+};
 
 /* filter chips (one chip can cover several kinds) */
 const CHIPS = [
@@ -73,6 +130,14 @@ const CHIPS = [
   { id: 'RBAC', on: false, more: true, label: 'RBAC', color: '#f43f5e', title: 'Role, RoleBinding, ClusterRole, ClusterRoleBinding' },
   { id: 'PodDisruptionBudget', on: false, more: true }, { id: 'NetworkPolicy', on: false, more: true, label: 'NetworkPolicy' },
   { id: 'StorageClass', on: false, more: true }, { id: 'IngressClass', on: false, more: true }, { id: 'Node', on: false, more: true },
+  { id: 'ReplicationController', on: true, short: 'rc' },
+  // admission webhooks / aggregated APIs break things cluster-wide when they fail: on by default (they are few)
+  { id: 'Admission', on: true, label: 'Admission & API', short: 'adm', color: '#ec4899', title: 'MutatingWebhook, ValidatingWebhook, ValidatingAdmissionPolicy (+Binding), APIService' },
+  { id: 'Quota', on: false, more: true, label: 'Quota & LimitRange', color: '#10b981', title: 'ResourceQuota, LimitRange' },
+  { id: 'Scheduling', on: false, more: true, label: 'PriorityClass & RuntimeClass', color: '#fbbf24', title: 'PriorityClass, RuntimeClass' },
+  { id: 'CertificateSigningRequest', on: false, more: true },
+  { id: 'CSI', on: false, more: true, label: 'CSI', color: '#7c3aed', title: 'VolumeAttachment, CSIDriver, CSINode' },
+  { id: 'Lease', on: false, more: true },
 ];
 const chipOn = {};
 
@@ -85,11 +150,15 @@ const REL = {
   grants: ['Cấp quyền theo', 'Được gán qua'], subject: ['Cấp quyền cho', 'Được cấp quyền qua'],
   scales: ['Tự động scale', 'Được scale bởi'], protects: ['Bảo vệ', 'Được bảo vệ bởi'], applies: ['Áp dụng cho', 'Chịu policy'],
   controller: ['Được xử lý bởi', 'Ingress controller của'],
+  priority: ['Độ ưu tiên', 'Là độ ưu tiên của'], runtime: ['Chạy bằng RuntimeClass', 'Là runtime của'],
+  calls: ['Gọi tới', 'Được gọi bởi'], parent: ['Gắn vào', 'Nhận route'], middleware: ['Dùng middleware', 'Là middleware của'],
+  attaches: ['Gắn vào', 'Được gắn bởi'], driver: ['Dùng CSI driver', 'Là CSI driver của'], held: ['Đang được giữ bởi', 'Giữ lease'],
 };
 const EDGE_GROUP = {
   owns: 'own', selects: 'traffic', routes: 'traffic', uses: 'traffic',
   mounts: 'dep', 'runs-on': 'dep', binds: 'dep', tls: 'dep', class: 'dep', pulls: 'dep', 'runs-as': 'dep',
   scales: 'policy', protects: 'policy', applies: 'policy', grants: 'policy', subject: 'policy', controller: 'traffic',
+  priority: 'dep', runtime: 'dep', calls: 'traffic', parent: 'traffic', middleware: 'dep', attaches: 'dep', driver: 'dep', held: 'policy',
 };
 const CARD_W = 232, CARD_H = 64, TILE_W = 300, TILE_H = 128;
 const MIN_READABLE_ZOOM = 0.7; // below this card text is too small to read
@@ -110,9 +179,9 @@ const icon = (kind, cls = 'i') => `<svg class="${cls}" viewBox="0 0 24 24">${ICO
 const css = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 const H = h => (['ok', 'warn', 'error'].includes(h) ? h : 'unknown');
 const healthColor = h => css('--' + H(h));
-const kindInfo = n => (n.group ? { ...CUSTOM, label: n.kind } : KINDS[n.kind] || { ...CUSTOM, label: n.kind });
-const iconKind = n => (n.group || !ICONS[n.kind] ? 'Custom' : n.kind);
-const chipOf = n => (n.group ? 'Custom' : RBAC_KINDS.includes(n.kind) ? 'RBAC' : KINDS[n.kind] ? n.kind : 'Custom');
+const kindInfo = n => (n.group ? KNOWN_CR[n.kind] || { ...CUSTOM, label: n.kind } : KINDS[n.kind] || KNOWN_CR[n.kind] || { ...CUSTOM, label: n.kind });
+const iconKind = n => (ICONS[n.kind] && (!n.group || KNOWN_CR[n.kind]) ? n.kind : 'Custom');
+const chipOf = n => (n.group ? 'Custom' : RBAC_KINDS.includes(n.kind) ? 'RBAC' : CHIP_GROUP[n.kind] || (KINDS[n.kind] ? n.kind : 'Custom'));
 const isVisible = n => (n.missing || chipOn[chipOf(n)]) && (n.kind !== 'Node' || nodeCardWanted(n));
 /* every Node comes with the graph (for the node bar); in one namespace only those running its pods get a card, as before */
 const nodeCardWanted = n => isAll() || (state.graph?.edges || []).some(e => e.type === 'runs-on' && e.target === n.id);
@@ -185,13 +254,40 @@ function elevated(inner, w, h, hovered) {
 }
 const cardH = () => CARD_H; // every card the same height; the reason (exit code, image, …) is shown in the side panel
 
+/*
+ * Bottom line of a card: what state it's in (left) and, for things with a ready ratio (workloads' replicas, a
+ * Service's endpoints), that ratio as a coloured pill on the right — instead of "ClusterIP · 1/1 endpoint" in one string.
+ */
+function cardParts(n) {
+  const info = n.info || {};
+  const raw = [info.replicas, info.ready, info.endpoints, /^\d+\/\d+$/.test(n.status || '') ? n.status : null].find(v => /^\d+\/\d+/.test(String(v || '')));
+  const m = raw && /^(\d+)\/(\d+)/.exec(raw);
+  let left = String(n.status || (n.health === 'unknown' ? 'tham chiếu' : ''));
+  if (m && !n.missing) {
+    left = left.replace(/\s*·?\s*\d+\/\d+(\s*endpoint)?\s*$/, '').trim();
+    if (!left || /^\d+\/\d+$/.test(left))
+      left = n.health === 'ok' ? 'Sẵn sàng' : n.reason || (+m[1] === 0 ? (+m[2] === 0 ? 'Không chạy' : 'Không pod nào sẵn sàng') : 'Chưa đủ pod sẵn sàng');
+    else if (n.health !== 'ok' && n.reason) left = n.reason;
+  }
+  return { left, ratio: m && !n.missing ? [+m[1], +m[2]] : null };
+}
+
 function cardImage(n, hovered = false, selected = false) {
   const k = kindInfo(n), ik = iconKind(n);
   const w = CARD_W, h = cardH(n), hc = healthColor(n.health);
   const card = css('--card');
   const border = selected ? css('--accent') : n.missing || n.health === 'error' ? hc : hovered ? css('--accent') : css('--border-strong');
-  const status = n.status || (n.health === 'unknown' ? 'tham chiếu' : '');
+  const { left: status, ratio } = cardParts(n);
   const iy = 13;
+  // the ratio pill, right-aligned on the status line
+  let pill = '', statusMax = w - 72.5 - 12;
+  if (ratio) {
+    const txt = `${ratio[0]}/${ratio[1]}`, pw = Math.round(txt.length * 6.6 + 12);
+    const pc = ratio[1] === 0 || (ratio[0] < ratio[1] && n.health === 'ok') ? css('--unknown') : ratio[0] >= ratio[1] ? css('--ok') : ratio[0] === 0 ? css('--error') : css('--warn');
+    pill = `<rect x="${w - 12 - pw}" y="44" width="${pw}" height="16" rx="5" fill="${pc}" fill-opacity="0.14"/>
+      <text x="${w - 12 - pw / 2}" y="55.5" text-anchor="middle" font-family="ui-monospace, SF Mono, Menlo, monospace" font-size="10.5" font-weight="700" fill="${pc}">${txt}</text>`;
+    statusMax -= pw + 8;
+  }
   const svg = `<g>
     <rect x="0.75" y="0.75" width="${w - 1.5}" height="${h - 1.5}" rx="12" fill="${card}" stroke="${border}"
       stroke-width="${selected ? 2.2 : n.missing || n.health === 'error' ? 1.6 : 1}" ${n.missing && !selected ? 'stroke-dasharray="5 4"' : ''}/>
@@ -203,7 +299,8 @@ function cardImage(n, hovered = false, selected = false) {
     <text x="61" y="20" font-family="${FONT}" font-size="10" font-weight="700" letter-spacing="0.6" fill="${css('--muted')}">${esc(fitText(k.label.toUpperCase() + (n.note ? '  ·  ' + n.note : ''), 10.6, 700, w - 61 - 12))}</text>
     <text x="61" y="38" font-family="${FONT}" font-size="13.5" font-weight="600" fill="${css('--text')}">${esc(fitText(n.name, 13.5, 600, w - 61 - 12, true))}</text>
     <circle cx="64.5" cy="51" r="3.2" fill="${hc}"/>
-    <text x="72.5" y="55" font-family="${FONT}" font-size="11" fill="${n.health === 'ok' ? css('--muted') : hc}">${esc(fitText(status, 11, 400, w - 72.5 - 12, true))}</text>
+    <text x="72.5" y="55" font-family="${FONT}" font-size="11" fill="${n.health === 'ok' ? css('--muted') : hc}">${esc(fitText(status, 11, 400, statusMax, true))}</text>
+    ${pill}
   </g>`;
   return svgUri(elevated(svg, w, h, hovered && !selected));
 }
@@ -315,7 +412,8 @@ function cyStyle() {
     { selector: 'edge[?via]', style: { 'line-style': 'dashed', 'line-dash-pattern': [3, 3], 'opacity': 0.5 } },
     { selector: 'edge[?broken]', style: { 'line-color': error, 'target-arrow-color': error, 'opacity': 0.9 } },
     { selector: '.faded', style: { 'opacity': 0.3 } },
-    { selector: 'edge.lit', style: { 'width': 2.4, 'opacity': 1, 'line-color': accent, 'target-arrow-color': accent, 'z-index': 10 } },
+    { selector: 'edge.lit', style: { 'width': 2.4, 'opacity': 1, 'line-color': accent, 'target-arrow-color': accent, 'z-index': 10,
+      'line-style': 'dashed', 'line-dash-pattern': [8, 5] } }, // highlighted links run too (see flow animation)
     // level of detail must come last so it wins over the per-edge-type opacity rules
     { selector: 'node.group.lod', style: {
       'label': 'data(lodLabel)', 'text-valign': 'center', 'text-margin-y': 0, 'text-wrap': 'wrap', 'line-height': 1.5,
@@ -381,6 +479,36 @@ function setEdgeMode(m) {
 document.querySelectorAll('#edgeModes button').forEach(b => b.onclick = () => setEdgeMode(b.dataset.mode));
 setEdgeMode(edgeMode);
 
+/* ----- moving links: dashed links (traffic, dependencies, policies, highlighted ones) run from source to target.
+ * Only the dashed links in view are touched, ~30 fps, and only while the graph is on screen; off with the dock button
+ * or when the system asks for reduced motion. ----- */
+const flow = { on: store.get('graph.flow') !== '0' && !matchMedia('(prefers-reduced-motion: reduce)').matches, off: 0, last: 0, raf: 0, set: null };
+const flowEdges = () => cy.edges('[g="traffic"], [g="dep"], [g="policy"], [?via], .lit').filter(e => !e.hasClass('lod'));
+cy.on('add remove data class', 'edge', () => { flow.set = null; });
+function flowTick(t) {
+  flow.raf = 0;
+  if (!flow.on) return;
+  const graphShown = !document.hidden && !document.querySelector('.app-view:not([hidden])') && $('cy').offsetWidth > 0;
+  if (graphShown && t - flow.last > 33) {
+    flow.last = t;
+    flow.off = (flow.off - 1.2) % 1300; // a common multiple of the dash patterns, so the loop has no visible jump
+    if (!flow.set) flow.set = flowEdges();
+    const ext = cy.extent();
+    const inView = flow.set.filter(e => { const b = e.boundingBox(); return b.x2 > ext.x1 && b.x1 < ext.x2 && b.y2 > ext.y1 && b.y1 < ext.y2; });
+    if (inView.length) cy.batch(() => inView.style('line-dash-offset', flow.off));
+  }
+  flow.raf = requestAnimationFrame(flowTick);
+}
+function setFlow(on) {
+  flow.on = on; store.set('graph.flow', on ? '1' : '0');
+  const b = $('flowMode'); if (b) { b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); b.title = on ? 'Tắt chuyển động đường nối' : 'Bật chuyển động đường nối'; }
+  const sw = $('flowSw'); if (sw) sw.checked = on;
+  if (on && !flow.raf) flow.raf = requestAnimationFrame(flowTick);
+  if (!on) cy.batch(() => cy.edges().removeStyle('line-dash-offset'));
+}
+$('flowMode')?.addEventListener('click', () => setFlow(!flow.on));
+setFlow(flow.on);
+
 /* ----- drag mode: off by default (dragging a card pans the canvas); on = cards can be moved and stay put ----- */
 let dragMode = false;
 cy.autoungrabify(true);
@@ -437,17 +565,22 @@ cy.on('zoom', () => {
  * A Pod is always in the Pod column, whatever is filtered out.
  */
 const COLUMNS = [
-  { kinds: ['Ingress', 'HorizontalPodAutoscaler', 'RoleBinding', 'ClusterRoleBinding'] },
-  { kinds: ['Service', 'PodDisruptionBudget', 'NetworkPolicy'] },                          // + custom resources
-  { kinds: ['Deployment', 'StatefulSet', 'DaemonSet', 'CronJob'] },
-  { kinds: ['ReplicaSet', 'Job'] },
+  { kinds: ['Gateway'] },                                                                    // Gateway → route → Service
+  { kinds: ['Ingress', 'HTTPRoute', 'GRPCRoute', 'TCPRoute', 'TLSRoute', 'UDPRoute', 'IngressRoute', 'IngressRouteTCP', 'IngressRouteUDP',
+    'HorizontalPodAutoscaler', 'RoleBinding', 'ClusterRoleBinding', 'MutatingWebhookConfiguration', 'ValidatingWebhookConfiguration',
+    'APIService', 'ValidatingAdmissionPolicyBinding'] },
+  { kinds: ['Service', 'TraefikService', 'PodDisruptionBudget', 'NetworkPolicy', 'ResourceQuota', 'LimitRange', 'ValidatingAdmissionPolicy'] }, // + custom resources
+  { kinds: ['Deployment', 'StatefulSet', 'DaemonSet', 'CronJob', 'ReplicationController'] },
+  { kinds: ['ReplicaSet', 'Job', 'Lease'] },
   { kinds: ['Pod'] },
-  { kinds: ['PersistentVolumeClaim', 'ConfigMap', 'Secret', 'ServiceAccount', 'Role', 'ClusterRole'] },
-  { kinds: ['PersistentVolume', 'StorageClass', 'Node', 'IngressClass'] },
+  { kinds: ['PersistentVolumeClaim', 'ConfigMap', 'Secret', 'ServiceAccount', 'Role', 'ClusterRole', 'Middleware', 'MiddlewareTCP',
+    'VolumeAttachment', 'CertificateSigningRequest'] },
+  { kinds: ['PersistentVolume', 'StorageClass', 'Node', 'IngressClass', 'GatewayClass', 'PriorityClass', 'RuntimeClass', 'CSIDriver', 'CSINode'] },
 ];
 const COL_OF = {};
 COLUMNS.forEach((c, i) => c.kinds.forEach(k => { COL_OF[k] = i; }));
-const colOf = raw => (raw.group ? 1 : COL_OF[raw.kind] ?? 1);
+// unknown custom resources sit with the Services (most operators' CRs own or feed workloads)
+const colOf = raw => (raw.group && !KNOWN_CR[raw.kind] ? COL_OF.Service : COL_OF[raw.kind] ?? COL_OF.Service);
 const KIND_RANK = {};
 COLUMNS.flatMap(c => c.kinds).forEach((k, i) => { KIND_RANK[k] = i; });
 const COL_GAP = 120, ROW_GAP = 16, COMP_GAP = 44, ISO_ROWS = 6;
@@ -457,7 +590,7 @@ const HEALTH_RANK = { error: 0, warn: 1, unknown: 2, ok: 3 };
  * runs on, a StorageClass, the default ServiceAccount…) would otherwise glue everything into one component and drag
  * nodes apart, leaving big empty gaps.
  */
-const WEAK_EDGES = new Set(['runs-on', 'class', 'runs-as', 'pulls', 'subject', 'grants', 'controller']);
+const WEAK_EDGES = new Set(['runs-on', 'class', 'runs-as', 'pulls', 'subject', 'grants', 'controller', 'priority', 'runtime', 'driver', 'held', 'attaches']);
 const SHARED_LIMIT = 2; // a ConfigMap/Secret/PVC used by more pods than this is shared infrastructure too
 
 /*
@@ -788,9 +921,57 @@ function controllerVia(g, visible) {
 }
 
 /* ================= rendering ================= */
+/* big workloads on the map: the pods of one controller (ReplicaSet, StatefulSet, DaemonSet, Job) beyond POD_GROUP_MIN
+ * become one card "api · 400 pod" with their states counted; a tap on it opens them up (state.podGroupsOpen) */
+const POD_GROUP_MIN = 6;
+state.podGroupsOpen = new Set();
+function simplifyGraph(g) {
+  const pods = new Map(g.nodes.filter(n => n.kind === 'Pod').map(n => [n.id, n]));
+  if (pods.size < POD_GROUP_MIN) return g;
+  const byOwner = new Map();
+  g.edges.forEach(e => { if (e.type === 'owns' && pods.has(e.target)) (byOwner.get(e.source) || byOwner.set(e.source, []).get(e.source)).push(e.target); });
+  const to = new Map(), extra = [];
+  const byId = new Map(g.nodes.map(n => [n.id, n]));
+  byOwner.forEach((ids, owner) => {
+    if (ids.length < POD_GROUP_MIN || state.podGroupsOpen.has(owner)) return;
+    const o = byId.get(owner) || { name: owner.split('/').pop(), namespace: pods.get(ids[0]).namespace };
+    const list = ids.map(id => pods.get(id)), by = {};
+    list.forEach(p => { const st = p.status || '?'; by[st] = (by[st] || 0) + 1; });
+    const health = list.some(p => p.health === 'error') ? 'error' : list.some(p => p.health === 'warn') ? 'warn' : list.every(p => p.health === 'unknown') ? 'unknown' : 'ok';
+    const states = Object.entries(by).sort((a, b) => b[1] - a[1]);
+    const id = 'pg:' + owner;
+    extra.push({ id, kind: 'Pod', group: null, name: `${ids.length} pod · ${o.name}`, namespace: o.namespace,
+      status: states.slice(0, 2).map(([k, v]) => `${v} ${k}`).join(' · ') + (states.length > 2 ? ' …' : ''), health,
+      reason: health !== 'ok' ? `${list.filter(p => p.health === health).length}/${ids.length} pod ${health === 'error' ? 'lỗi' : 'cảnh báo'}` : null,
+      missing: false, labels: {}, created: list.map(p => p.created).filter(Boolean).sort().pop() || null,
+      info: { pods: String(ids.length) }, // a fixed shape: state counts live in the status line, so the card keeps its height
+      podGroup: owner, podIds: ids });
+    ids.forEach(p => to.set(p, id));
+  });
+  if (!extra.length) return g;
+  const nodes = g.nodes.filter(n => !to.has(n.id)).concat(extra);
+  const seen = new Set(), edges = [];
+  g.edges.forEach(e => {
+    const s = to.get(e.source) || e.source, t = to.get(e.target) || e.target;
+    if (s === t) return;
+    const k = s + '>' + t + '>' + e.type;
+    if (seen.has(k)) return; seen.add(k);
+    edges.push(s === e.source && t === e.target ? e : { ...e, source: s, target: t });
+  });
+  return { ...g, nodes, edges };
+}
+
 function render(fitView) {
-  const g = state.graph;
-  if (!g) return;
+  if (!state.graph) return;
+  // the relationship map is only built while it is on screen; other views just keep counts and the panel current
+  if (document.querySelector('.app-view:not([hidden])')) {
+    $('loading').style.display = 'none';
+    state.graphStale = true; state.graphFit = state.graphFit || !!fitView;
+    updateCounts(); refreshPanel();
+    return;
+  }
+  if (state.graphStale) { state.graphStale = false; fitView = fitView || state.graphFit; state.graphFit = false; state.structureKey = ''; }
+  const g = simplifyGraph(state.graph);
   // a live update while the user is holding a card would re-layout under their mouse: wait until it's dropped
   if (cy.$('node:grabbed').nonempty()) {
     clearTimeout(state.deferredRender);
@@ -804,9 +985,10 @@ function render(fitView) {
   let cards, tiles = [], groups = [];
 
   if (all) {
-    const place = placement(g);
+    const place = placement(g), full = state.graph, placeFull = full === g ? place : placement(full);
+    // namespace tiles count the real objects (every pod), not the grouped cards
     const byNs = new Map();
-    g.nodes.forEach(n => { const k = place.get(n.id); (byNs.get(k) || byNs.set(k, []).get(k)).push(n); });
+    full.nodes.forEach(n => { const k = placeFull.get(n.id); (byNs.get(k) || byNs.set(k, []).get(k)).push(n); });
     const sums = nsOrder([...byNs].map(([ns, list]) => summarize(list, ns)));
     sums.forEach((s, i) => {
       s.order = i;
@@ -992,10 +1174,11 @@ function showDetail(node, refresh) { showDetailRaw(node.data('raw'), refresh); }
  * (Tổng quan / Events / YAML / Quan hệ). Live updates only replace the parts whose HTML changed,
  * so scroll position, the YAML viewer and anything being typed survive.
  */
-const TABS = [['overview', 'Tổng quan'], ['events', 'Events'], ['history', 'Lịch sử'], ['yaml', 'YAML'], ['describe', 'Describe'], ['relations', 'Quan hệ']];
+const TABS = [['overview', 'Tổng quan'], ['events', 'Events'], ['relations', 'Quan hệ'], ['history', 'Lịch sử'], ['yaml', 'YAML'], ['describe', 'Describe']];
 const HISTORY_KINDS = ['Deployment', 'StatefulSet', 'DaemonSet'];
 const tabAvailable = (n, t) => !(n.missing && ['yaml', 'events', 'history', 'describe'].includes(t)) && (t !== 'history' || HISTORY_KINDS.includes(n.kind));
 state.tab = store.get('tab') || 'overview';
+state.condOpen = store.get('condOpen') === '1';
 
 function relationsOf(n) {
   const groups = {}, byId = new Map(state.graph.nodes.map(x => [x.id, x]));
@@ -1023,7 +1206,7 @@ function showDetailRaw(n, refresh) {
   if (!(refresh && sameNode)) {
     $('detail').dataset.id = n.id;
     $('detail').innerHTML = `<div class="dp">
-      <div class="dp-resize" id="dpResize" title="Kéo để đổi độ rộng"></div>
+      <div class="dp-resize" id="dpResize" role="separator" aria-orientation="vertical" aria-label="Độ rộng panel" tabindex="0" title="Kéo để đổi độ rộng · nhấp đúp: mặc định · kéo hết sang phải: đóng"></div>
       <header class="dp-head" id="dpHead"></header>
       <nav class="dp-tabs" id="dpTabs" role="tablist"></nav>
       <div class="dp-body" id="dpBody"></div></div>`;
@@ -1034,6 +1217,7 @@ function showDetailRaw(n, refresh) {
     const count = t === 'events' ? evCount : t === 'relations' ? relCount : null;
     return `<button role="tab" class="dp-tab ${state.tab === t ? 'on' : ''}" data-tab="${t}" aria-selected="${state.tab === t}">${label}${count != null ? `<span class="cnt ${t === 'events' && warnEv ? 'warn' : ''}">${count}</span>` : ''}</button>`;
   }).join(''));
+  const tabsEl = $('dpTabs'); tabsEl.classList.toggle('ovf', tabsEl.scrollWidth > tabsEl.clientWidth + 2 && tabsEl.scrollLeft + tabsEl.clientWidth < tabsEl.scrollWidth - 2);
   const tab = tabAvailable(n, state.tab) ? state.tab : 'overview';
   if (tab === 'yaml') renderYamlTab(n, refresh && sameNode);
   else if (tab === 'history') renderHistoryTab(n, refresh && sameNode);
@@ -1050,133 +1234,340 @@ function patch(id, html) {
   if (el && el.dataset.html !== html) { el.innerHTML = html; el.dataset.html = html; }
 }
 
+/* ---------- header: identity · status line · owner · toolbar ---------- */
+const svgI = p => `<svg class="i" viewBox="0 0 24 24">${p}</svg>`;
+function findNode(kind, ns, name) {
+  return state.graph.nodes.find(x => x.kind === kind && x.name === name && (!ns || !x.namespace || x.namespace === ns));
+}
+function ownerLine(n, d) {
+  const m = d && d.manager;
+  if (m && m.tool === 'controller') {
+    const [kind, name] = String(m.name).includes('/') ? m.name.split('/') : ['', m.name];
+    const o = kind && findNode(kind, n.namespace, name);
+    const label = `<span class="k">${esc(kind)}</span> ${esc(name)}`;
+    return `<div class="dp-owner" title="${esc(m.note || '')}">${svgI('<path d="M9 14l-5-5 5-5M4 9h11a5 5 0 0 1 0 10h-3"/>')}Quản lý bởi
+      ${o ? `<a data-goto="${esc(o.id)}">${label}</a>` : `<span>${label}</span>`}</div>`;
+  }
+  const chips = [];
+  // Helm only re-applies on the next upgrade (informational); Argo CD / Flux may overwrite edits (warning, or error when it self-heals)
+  if (m && m.tool === 'Helm') chips.push(`<span class="pill helm" title="${esc(m.note)}">${svgI('<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2.5"/><path d="M12 4v5.5M12 14.5V20M4 12h5.5M14.5 12H20"/>')}Helm · ${esc(m.name)}</span>`);
+  else if (m) chips.push(`<span class="pill mgr ${m.revertsQuickly ? 'hot' : ''}" title="${esc(m.note)}">${svgI('<path d="M12 9v4M12 17h.01M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/>')}${esc(m.tool)} · ${esc(m.name)}</span>`);
+  else if (d && d.helm) chips.push(`<span class="pill helm" title="Helm release">${svgI('<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2.5"/><path d="M12 4v5.5M12 14.5V20M4 12h5.5M14.5 12H20"/>')}Helm · ${esc(d.helm.release || '')}${d.helm.chart ? ` · ${esc(d.helm.chart)}` : ''}</span>`);
+  return chips.length ? `<div class="dp-pills">${chips.join('')}</div>` : '';
+}
+
 function panelHeader(n, d) {
   const k = kindInfo(n), a = age(n.created);
-  const info = n.info || {};
-  const m = d && d.manager;
-  const mgr = m ? `<span class="pill mgr ${m.revertsQuickly ? 'hot' : ''}" title="${esc(m.note)}">⚠ ${m.tool === 'controller' ? 'quản lý bởi ' + esc(m.name) : esc(m.tool) + ' · ' + esc(m.name)}</span>` : '';
-  const helm = !m && d && d.helm ? `<span class="pill helm" title="Helm release">⎈ ${esc(d.helm.release || '')}${d.helm.chart ? ` · ${esc(d.helm.chart)}` : ''}</span>` : '';
-  const facts = [];
-  // only what the status pill and the facts grid don't already say
-  if (n.kind === 'Pod' && info.node) facts.push(`<span class="pill" title="node">⛁ ${esc(info.node)}</span>`);
-  if (info.restarts && info.restarts !== '0') facts.push(`<span class="pill warn">↻ ${esc(info.restarts)} restart</span>`);
-  const tools = [
-    typeof podsFor === 'function' && podsFor(n.id).length ? `<button class="tool" id="openLogs"><svg class="i" viewBox="0 0 24 24"><path d="M4 17l6-6-6-6M12 19h8"/></svg>Log</button>` : '',
-    typeof actionTools === 'function' ? actionTools(n) : '',
-  ].join('');
+  const tools = typeof actionTools === 'function' ? actionTools(n) : { main: '', more: '', danger: '' };
+  const logs = typeof podsFor === 'function' && podsFor(n.id).length
+    ? `<button class="tool" id="openLogs">${svgI('<path d="M4 17l6-6-6-6M12 19h8"/>')}Log</button>` : '';
+  const more = tools.more ? `<div class="dp-more-wrap"><button class="tool icon" data-more aria-expanded="${state.moreOpen === n.id}" title="Thêm hành động">${svgI('<circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/>')}</button>
+    ${state.moreOpen === n.id ? `<div class="dp-menu" role="menu">${tools.more}</div>` : ''}</div>` : '';
+  const bar = logs + tools.main + more;
   return `
     <div class="dp-top">
       <div class="tile" style="--c:${n.missing ? 'var(--error)' : k.color}">${icon(iconKind(n))}</div>
       <div class="dp-id">
-        <div class="dp-kind">${esc(n.group ? `${n.kind} · ${n.group}` : n.kind)}${n.namespace ? `<span> · ${esc(n.namespace)}</span>` : '<span> · cluster</span>'}</div>
-        <h2>${esc(n.name)}</h2>
+        <div class="dp-kind">${esc(n.kind)}${n.group ? `<span class="grp">${esc(n.group)}</span>` : ''}<span class="ns">${n.namespace ? svgI('<path d="M3 7l9-4 9 4-9 4z M3 12l9 4 9-4M3 17l9 4 9-4"/>') + esc(n.namespace) : 'cluster-scoped'}</span></div>
+        <h2 title="${esc(n.name)}">${esc(n.name)}<button class="copy" data-copyname="${esc(n.name)}" title="Sao chép tên">${svgI('<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/>')}</button></h2>
       </div>
-      <button class="icon-btn sm" id="dpWide" title="${$('main').classList.contains('wide-panel') ? 'Thu hẹp panel' : 'Mở rộng panel'}"><svg class="i" viewBox="0 0 24 24"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></button>
-      <button class="icon-btn sm" id="dclose" title="Đóng (Esc)"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      <button class="icon-btn sm" id="dpMode" title="${panelModeTitle()}" aria-pressed="${panelMode() === 'overlay'}">${svgI(panelModeIcon())}</button>
+      <button class="icon-btn sm" id="dpWide" title="${panelIsWide() ? 'Thu hẹp panel' : 'Mở rộng panel'}" aria-pressed="${panelIsWide()}">${svgI(panelIsWide()
+        ? '<path d="M4 14h6v6M20 10h-6V4M14 10l7-7M3 21l7-7"/>' : '<path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>')}</button>
+      <button class="icon-btn sm" id="dclose" title="Đóng (Esc)">${svgI('<path d="M6 6l12 12M18 6L6 18"/>')}</button>
     </div>
-    <div class="dp-pills">
+    <div class="dp-status">
       <span class="pill h" style="--c:${hvar(n.health)}"><i></i>${esc(n.status || n.health)}</span>
-      ${a ? `<span class="pill" title="${esc(n.created)}">${a}</span>` : ''}${mgr}${helm}${facts.join('')}
+      ${a ? `<span class="meta" title="Tạo lúc ${esc(fmtTime(n.created))}">${svgI('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>')}${a}</span>` : ''}
     </div>
-    ${tools.trim() ? `<div class="dp-tools">${tools}</div>` : ''}
+    ${ownerLine(n, d)}
+    ${bar.trim() || tools.danger ? `<div class="dp-tools">${bar}</div>` : ''}
     ${typeof actionExtras === 'function' ? actionExtras(n) : ''}`;
 }
 
+const fmtTime = ts => { const t = new Date(ts); return isNaN(t) ? String(ts ?? '') : t.toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'medium' }); };
+
 function reasonBox(n) {
   if (!n.reason && !n.missing) return '';
-  return `<div class="reason" style="--c:${hvar(n.health)}">
-    <svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>
-    <div><b>${n.missing ? 'Tham chiếu bị gãy' : 'Lý do'}</b><div>${esc(n.reason || '')}</div>
+  const title = n.missing ? 'Tham chiếu bị gãy' : (n.status && n.status !== n.reason ? n.status : 'Lý do');
+  return `<div class="reason" style="--c:${hvar(n.missing ? 'error' : n.health)}">
+    ${svgI('<circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/>')}
+    <div><b>${esc(title)}</b>${n.reason ? `<div>${esc(n.reason)}</div>` : ''}
     ${n.missing ? `<div class="sub">Có tài nguyên đang trỏ tới ${esc(n.kind)} này nhưng nó không tồn tại trong cluster.</div>` : ''}</div></div>`;
 }
 
 const FACT_LABELS = { ingressController: 'Ingress controller cho', podIP: 'Pod IP', node: 'Node', restarts: 'Restarts', qos: 'QoS', cpu: 'CPU', memory: 'Memory', replicas: 'Replicas',
-  updated: 'Updated', strategy: 'Strategy', images: 'Image', type: 'Type', clusterIP: 'Cluster IP', ports: 'Ports', endpoints: 'Endpoints',
+  ready: 'Ready', updated: 'Updated', strategy: 'Strategy', images: 'Image', type: 'Type', clusterIP: 'Cluster IP', ports: 'Ports', endpoints: 'Endpoints',
   selector: 'Selector', hosts: 'Hosts', class: 'Class', address: 'Address', schedule: 'Schedule', lastSchedule: 'Lần chạy gần nhất',
   lastSuccess: 'Thành công gần nhất', active: 'Đang chạy', succeeded: 'Thành công', failed: 'Thất bại', storageClass: 'StorageClass',
-  capacity: 'Dung lượng', request: 'Yêu cầu', accessModes: 'Access modes', keys: 'Số key', serviceName: 'Service' };
-const WIDE_FACTS = new Set(['images', 'selector', 'ports', 'hosts', 'subjects', 'rules', 'apiVersion', 'claim', 'provisioner']);
+  capacity: 'Dung lượng', request: 'Yêu cầu', accessModes: 'Access modes', keys: 'Số key', serviceName: 'Service',
+  roles: 'Roles', containers: 'Containers', internalIP: 'Internal IP', apiVersion: 'API version', entryPoints: 'Entry points', failurePolicy: 'Failure policy', globalDefault: 'Mặc định', preemptionPolicy: 'Preemption', attachRequired: 'Attach required', podInfoOnMount: 'Pod info on mount', os: 'OS', arch: 'Arch', kernel: 'Kernel', runtime: 'Runtime', kubelet: 'Kubelet', rules: 'Rules', subjects: 'Subjects', completions: 'Completions', duration: 'Thời gian chạy' };
+const humanKey = k => FACT_LABELS[k] || String(k).replace(/([a-z])([A-Z])/g, '$1 $2').replace(/^./, c => c.toUpperCase());
+// facts that a dedicated section below already shows in full
+const HIDDEN_FACTS = { Node: ['kubelet'], Role: ['rules'], ClusterRole: ['rules'],
+  // split columns exist for the table; the panel keeps the one-line "Ports", and the Endpoints section replaces the count
+  Service: ['port', 'targetPort', 'protocol', 'nodePort', 'endpoints'],
+  HorizontalPodAutoscaler: ['current', 'minReplicas', 'maxReplicas'] };
 const TIME_FACTS = new Set(['lastSchedule', 'lastSuccess', 'completed']);
+const MONO_FACTS = new Set(['podIP', 'clusterIP', 'images', 'image', 'internalIP', 'kubelet', 'storageClass', 'request', 'capacity', 'ports', 'selector', 'hosts', 'address', 'endpoints', 'schedule', 'node', 'cpu', 'memory']);
 
-function factsGrid(info) {
-  const entries = Object.entries(info || {}).filter(([k]) => !['lỗi', 'cpuPct', 'memPct', 'podNodes'].includes(k)); // node bar / node filter only
-  if (!entries.length) return '';
-  return `<div class="facts">${entries.map(([k, v]) => {
-    let val = esc(v);
-    if (TIME_FACTS.has(k) && age(v)) val = `${esc(age(v))} trước`;
-    let bar = '';
+/* a property table: label column + value column, one row per fact */
+function kv(rows) {
+  const r = rows.filter(Boolean);
+  return r.length ? `<div class="props">${r.map(([k, v, cls = '']) => `<div class="p-k">${esc(k)}</div><div class="p-v ${cls}">${v}</div>`).join('')}</div>` : '';
+}
+
+function factsGrid(n, skip = []) {
+  const info = n.info || {};
+  const hidden = [...(HIDDEN_FACTS[n.kind] || []), ...skip];
+  const rows = Object.entries(info).filter(([k]) => !['lỗi', 'cpuPct', 'memPct', 'podNodes', ...hidden].includes(k)).map(([k, v]) => {
+    let val = esc(v), cls = MONO_FACTS.has(k) ? 'mono' : '';
+    if (TIME_FACTS.has(k) && age(v)) val = `${esc(age(v))} trước <span class="dim">· ${esc(fmtTime(v))}</span>`;
+    if (k === 'restarts' && v !== '0') cls += ' warn';
+    if (k === 'node') { const nd = findNode('Node', null, v); if (nd) val = `<a data-goto="${esc(nd.id)}">${val}</a>`; }
+    if (k === 'images') val = String(v).split(/,\s*/).map(esc).join('<br>');
     const m = /^(\d+)\/(\d+)/.exec(v);
-    if ((k === 'replicas' || k === 'ready' || k === 'updated') && m && Number(m[2]) > 0) {
+    const pq = n.kind === 'ResourceQuota' && /\((\d+)%\)$/.exec(v); // "500m / 2 (25%)"
+    if (pq) {
+      const pct = Math.min(100, +pq[1]);
+      val = `<span class="ratio">${esc(String(v).replace(/\s*\(\d+%\)$/, ''))}<span class="bar"><i style="width:${pct}%;--c:${pct >= 100 ? 'var(--error)' : pct >= 90 ? 'var(--warn)' : 'var(--ok)'}"></i></span><span class="dim">${pct}%</span></span>`;
+      cls = 'mono';
+    } else if (['replicas', 'ready', 'updated'].includes(k) && m && Number(m[2]) > 0) {
       const pct = Math.min(100, Math.round(100 * Number(m[1]) / Number(m[2])));
-      bar = `<div class="bar"><i style="width:${pct}%;--c:${pct === 100 ? 'var(--ok)' : pct === 0 ? 'var(--error)' : 'var(--warn)'}"></i></div>`;
+      val = `<span class="ratio">${val}<span class="bar"><i style="width:${pct}%;--c:${pct === 100 ? 'var(--ok)' : pct === 0 ? 'var(--error)' : 'var(--warn)'}"></i></span></span>`;
     }
-    return `<div class="fact ${WIDE_FACTS.has(k) || String(v).length > 28 ? 'wide' : ''}"><div class="k">${esc(FACT_LABELS[k] || k)}</div><div class="v" title="${esc(v)}">${val}</div>${bar}</div>`;
-  }).join('')}</div>`;
+    return [humanKey(k), val, cls];
+  });
+  if (n.kind === 'LimitRange') return ''; // its "Giới hạn" table says the same, better laid out
+  return rows.length ? block('Thông tin', null, kv(rows), '', 'half') : '';
 }
 
+const BAD_WHEN_TRUE = /Pressure|Unavailable|Failed|ReplicaFailure|Stalled|Degraded|Denied/;
+const condClass = c => c.status === 'Unknown' ? 'unk' : (c.status === 'True') !== BAD_WHEN_TRUE.test(c.type) ? 'ok' : 'bad';
+
+/*
+ * What each well-known condition means, in plain words, for its good and its bad state.
+ * Rows follow the resource's lifecycle (scheduled → started → ready) rather than the API's arbitrary order.
+ */
+const COND_INFO = {
+  PodScheduled: ['Đã được xếp lên một node', 'Chưa xếp được lên node nào (thiếu tài nguyên, taint, affinity…)'],
+  PodReadyToStartContainers: ['Sandbox và mạng của pod đã sẵn sàng', 'Chưa tạo xong sandbox / mạng cho pod'],
+  Initialized: ['Mọi init container đã chạy xong', 'Còn init container chưa chạy xong hoặc bị lỗi'],
+  ContainersReady: ['Mọi container đều đã ready', 'Có container chưa ready (đang khởi động, crash, readiness probe lỗi)'],
+  Ready: ['Pod nhận được traffic từ Service', 'Pod chưa ready nên bị loại khỏi endpoint của Service'],
+  DisruptionTarget: ['Pod sắp bị xoá (eviction, preemption, node drain…)', 'Không bị đánh dấu xoá'],
+  Available: ['Đủ số replica tối thiểu đang chạy', 'Không đủ replica sẵn sàng (minAvailable / maxUnavailable)'],
+  Progressing: ['Rollout đang tiến triển hoặc đã xong', 'Rollout bị kẹt quá progressDeadlineSeconds'],
+  ReplicaFailure: ['Không tạo được pod (quota, admission webhook, lỗi spec…)', 'Tạo pod bình thường'],
+  Complete: ['Job đã chạy xong thành công', 'Job chưa hoàn thành'],
+  Failed: ['Job thất bại (vượt backoffLimit hoặc activeDeadlineSeconds)', 'Job chưa thất bại'],
+  SuccessCriteriaMet: ['Đã đạt điều kiện thành công của Job', 'Chưa đạt điều kiện thành công'],
+  FailureTarget: ['Job đang được đánh dấu thất bại', 'Không bị đánh dấu thất bại'],
+  Suspended: ['Job đang tạm dừng (spec.suspend)', 'Job không bị tạm dừng'],
+  MemoryPressure: ['Node đang thiếu memory, kubelet có thể evict pod', 'Node đủ memory'],
+  DiskPressure: ['Node đang thiếu dung lượng đĩa', 'Node đủ dung lượng đĩa'],
+  PIDPressure: ['Node sắp hết số tiến trình (PID)', 'Node đủ PID'],
+  NetworkUnavailable: ['Mạng của node chưa được cấu hình đúng', 'Mạng của node bình thường'],
+  AbleToScale: ['HPA đọc và đổi được số replica', 'HPA không đổi được số replica'],
+  ScalingActive: ['HPA tính được số replica từ metrics', 'HPA không lấy được metrics nên không tự scale'],
+  ScalingLimited: ['Số replica mong muốn bị chặn bởi min/maxReplicas', 'Không bị giới hạn bởi min/max'],
+  Resizing: ['Volume đang được mở rộng', 'Không đang mở rộng'],
+  FileSystemResizePending: ['Đã mở rộng volume, chờ pod mount lại để resize filesystem', 'Không chờ resize filesystem'],
+  Established: ['CRD đã được API server phục vụ', 'CRD chưa được phục vụ'],
+  NamesAccepted: ['Tên resource của CRD không bị trùng', 'Tên resource bị trùng với CRD khác'],
+  Accepted: ['Đã được controller chấp nhận', 'Bị từ chối, hoặc chưa có controller nào xử lý'],
+  Programmed: ['Đã cấu hình xong trên proxy, đang nhận traffic', 'Chưa cấu hình được trên proxy'],
+  ResolvedRefs: ['Mọi backend / secret tham chiếu đều tồn tại và được phép dùng', 'Có backend / secret không tồn tại hoặc thiếu ReferenceGrant'],
+  Approved: ['Yêu cầu đã được duyệt', 'Chưa được duyệt'],
+  Denied: ['Yêu cầu bị từ chối', 'Không bị từ chối'],
+};
+// same condition type, different meaning depending on the kind
+const COND_INFO_KIND = {
+  APIService: { Available: ['API server gọi được tới service của API này', 'API không dùng được: kubectl top / HPA / discovery có thể lỗi'] },
+  CertificateSigningRequest: { Failed: ['Ký chứng chỉ thất bại', 'Không lỗi'] },
+};
+// reasons that say more than the generic sentence
+const REASON_INFO = {
+  NewReplicaSetAvailable: 'Rollout đã hoàn tất, ReplicaSet mới đã sẵn sàng',
+  ReplicaSetUpdated: 'Đang rollout ReplicaSet mới',
+  FoundNewReplicaSet: 'Đã tạo ReplicaSet mới, đang rollout',
+  ProgressDeadlineExceeded: 'Rollout bị kẹt quá progressDeadlineSeconds',
+  DeploymentPaused: 'Rollout đang tạm dừng',
+  MinimumReplicasAvailable: 'Đủ số replica tối thiểu đang chạy',
+  MinimumReplicasUnavailable: 'Không đủ replica tối thiểu đang chạy',
+  ContainersNotReady: 'Có container chưa ready',
+  ContainersNotInitialized: 'Init container chưa chạy xong',
+  Unschedulable: 'Không có node nào phù hợp để xếp pod',
+  PodCompleted: 'Pod đã chạy xong, các container đã dừng',
+  BackoffLimitExceeded: 'Job thất bại quá số lần cho phép (backoffLimit)',
+  DeadlineExceeded: 'Job chạy quá activeDeadlineSeconds',
+  KubeletReady: 'Kubelet đang chạy bình thường',
+  KubeletNotReady: 'Kubelet chưa sẵn sàng (runtime, mạng hoặc PLEG lỗi)',
+  NodeStatusUnknown: 'Mất liên lạc với kubelet của node',
+};
+const COND_ORDER = ['PodScheduled', 'PodReadyToStartContainers', 'Initialized', 'ContainersReady', 'Ready',
+  'Available', 'Progressing', 'ReplicaFailure', 'SuccessCriteriaMet', 'Complete', 'FailureTarget', 'Failed', 'Suspended',
+  'MemoryPressure', 'DiskPressure', 'PIDPressure', 'NetworkUnavailable', 'AbleToScale', 'ScalingActive', 'ScalingLimited'];
+
+function condMeaning(c, cls, kind) {
+  const info = COND_INFO_KIND[kind]?.[c.type] || COND_INFO[c.type];
+  const isTrue = c.status === 'True';
+  // the reason is more specific only where one condition covers several situations (rollout phase, kubelet state)
+  const preferReason = !info || c.type === 'Progressing' || /^Kubelet|^NodeStatus/.test(c.reason || '');
+  if (preferReason && c.reason && REASON_INFO[c.reason]) return REASON_INFO[c.reason];
+  if (info) return isTrue ? info[0] : c.status === 'Unknown' ? 'Không xác định — chưa nhận được trạng thái' : info[1];
+  return cls === 'ok' ? 'Đạt' : c.status === 'Unknown' ? 'Không xác định' : 'Không đạt';
+}
+
+function conditionsBlock(conds, kind) {
+  const rank = c => { const i = COND_ORDER.indexOf(c.type); return i < 0 ? 99 : i; };
+  // Node: "Ready" is the headline, the pressures follow
+  const sorted = [...conds].sort((a, b) => (a.type === 'Ready' && b.type.endsWith('Pressure') ? -1 : b.type === 'Ready' && a.type.endsWith('Pressure') ? 1 : rank(a) - rank(b)));
+  const bad = conds.filter(c => condClass(c) !== 'ok').length;
+  const rows = sorted.map(c => {
+    const cls = condClass(c);
+    const raw = [c.reason, c.message].filter(Boolean).join(': ');
+    return `<tr class="${cls}">
+      <td class="c-name"><div class="cn"><span class="ic">${cls === 'ok' ? svgI('<path d="M5 12l5 5 9-10"/>') : cls === 'bad' ? svgI('<path d="M7 7l10 10M17 7L7 17"/>') : '?'}</span><b>${esc(c.type).replace(/([a-z])(?=[A-Z])/g, '$1<wbr>')}</b></div></td>
+      <td class="c-why">${esc(condMeaning(c, cls, kind))}${raw && cls !== 'ok' ? `<div class="raw">${esc(raw)}</div>` : ''}</td>
+      <td class="c-ago" title="${esc(c.lastTransitionTime ? 'Đổi trạng thái lúc ' + fmtTime(c.lastTransitionTime) : '')}">${esc(age(c.lastTransitionTime) || '—')}</td></tr>`;
+  }).join('');
+  const open = state.condOpen;
+  const badNames = sorted.filter(c => condClass(c) !== 'ok').map(c => esc(c.type));
+  const summary = bad
+    ? `<span class="cs-ic bad">${svgI('<path d="M7 7l10 10M17 7L7 17"/>')}</span><span class="cs-t"><b>${badNames.join(', ')}</b> không đạt</span><span class="cs-n">${conds.length - bad}/${conds.length} đạt</span>`
+    : `<span class="cs-ic ok">${svgI('<path d="M5 12l5 5 9-10"/>')}</span><span class="cs-t">Tất cả đạt</span><span class="cs-n">${conds.length}/${conds.length}</span>`;
+  return block('Conditions', null, `<div class="card flush cond-card ${open ? 'open' : ''} ${bad ? 'has-bad' : ''}">
+      <button class="cond-sum" data-cond-toggle aria-expanded="${!!open}" title="${open ? 'Thu gọn' : 'Xem chi tiết từng condition'}">${summary}
+        <svg class="i chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
+      ${open ? `<table class="tbl ctbl"><thead><tr><th>Condition</th><th>Ý nghĩa</th><th class="r">Từ</th></tr></thead><tbody>${rows}</tbody></table>` : ''}</div>`,
+    '', 'half');
+}
+
+/*
+ * Overview, ordered by what you need first when something is wrong:
+ *   problem → properties + health (conditions) → what runs (containers) → usage → kind-specific → metadata.
+ * Sections marked "half" sit side by side when the panel is widened.
+ */
 function overviewTab(n, d) {
-  let html = reasonBox(n) + factsGrid(n.info) + (typeof mxBlock === 'function' ? mxBlock(n) : '');
-  if (n.missing) return html;
-  if (!d) return html + `<div class="dp-loading"><div class="spinner"></div>Đang tải chi tiết…</div>`;
-  if (d.error) return html + `<p class="muted">Không tải được chi tiết: ${esc(d.error)}</p>`;
-  if (d.containers && d.containers.length) html += block(`Containers`, d.containers.length, d.containers.map(containerCard).join(''));
-  if (d.node) html += block('Node', null, nodeDetails(d.node));
+  const usage = typeof mxBlock === 'function' ? mxBlock(n) : '';
+  // the charts show live CPU / memory precisely; the rounded snapshot in the facts would only disagree with them
+  const facts = factsGrid(n, usage && n.kind !== 'Node' ? ['cpu', 'memory'] : []);
+  const wrap = h => `<div class="ov">${h}</div>`;
+  let html = reasonBox(n) + facts;
+  if (n.missing) return wrap(html);
+  if (!d) return wrap(html + usage + `<div class="dp-loading"><div class="spinner"></div>Đang tải chi tiết…</div>`);
+  if (d.error) return wrap(html + usage + `<p class="muted">Không tải được chi tiết: ${esc(d.error)}</p>`);
+  if (d.conditions && d.conditions.length) html += conditionsBlock(d.conditions, n.kind);
+  if (d.endpoints) html += endpointsBlock(n, d.endpoints);
+  // kind-specific tables from the server: webhook rules, routes, listeners, CEL validations, limit ranges…
+  // up to 3 columns: a table; wider ones (webhooks, listeners, limits) as one card per row so nothing gets squeezed
+  const cell = v => (v === '—' ? '<span class="dim">—</span>' : esc(v));
+  for (const t of d.tables || []) html += block(t.title, t.rows.length, t.columns.length <= 3
+    ? `<div class="card flush"><table class="tbl xtbl"><thead><tr>${t.columns.map(c => `<th>${esc(c)}</th>`).join('')}</tr></thead>
+      <tbody>${t.rows.map(r => `<tr>${r.map((v, i) => `<td class="${i === 0 ? 'k' : ''}">${cell(v)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`
+    : t.rows.map(r => `<div class="xcard"><div class="xcard-h">${cell(r[0])}</div>${kv(t.columns.slice(1).map((c, i) => [c, cell(r[i + 1]), 'mono']))}</div>`).join(''));
+  if (d.containers && d.containers.length) {
+    const init = d.containers.filter(c => c.init), main = d.containers.filter(c => !c.init);
+    html += block('Containers', main.length, main.map(containerCard).join(''));
+    if (init.length) html += block('Init containers', init.length, init.map(containerCard).join(''));
+  }
+  html += usage;
+  if (d.node) html += nodeDetails(d.node);
   if (d.data) html += block('Dữ liệu', d.data.length, d.data.length ? `<div class="keys">${d.data.map(x =>
-    `<div><span>${esc(x.key)}</span><small>${x.size} byte${x.binary ? ' · binary' : ''}</small></div>`).join('')}</div>
-    ${d.kind === 'Secret' ? '<p class="muted small">Giá trị của Secret không bao giờ được gửi lên trình duyệt.</p>' : ''}` : '<p class="muted">Trống</p>');
-  if (d.rules) html += block('Rules', d.rules.length, `<table class="tbl"><tr><th>verbs</th><th>resources</th><th>apiGroups</th></tr>${d.rules.map(r =>
-    `<tr><td>${esc(r.verbs)}</td><td>${esc(r.resources)}</td><td>${esc(r.apiGroups)}</td></tr>`).join('')}</table>`);
-  if (d.conditions && d.conditions.length) html += block('Conditions', null, `<div class="conds">${d.conditions.map(c => {
-    const good = (c.status === 'True') !== /Pressure|Unavailable|Failed|ReplicaFailure|Stalled|Degraded/.test(c.type);
-    const cls = c.status === 'Unknown' ? 'unk' : good ? 'ok' : 'bad';
-    return `<div class="cond ${cls}"><span class="ic">${cls === 'ok' ? '✓' : cls === 'bad' ? '✕' : '?'}</span>
-      <div><b>${esc(c.type)}</b>${c.reason ? `<span class="muted"> · ${esc(c.reason)}</span>` : ''}${c.message ? `<div class="sub">${esc(c.message)}</div>` : ''}</div>
-      ${c.lastTransitionTime ? `<span class="ago">${esc(age(c.lastTransitionTime) || '')}</span>` : ''}</div>`;
-  }).join('')}</div>`);
-  const labels = Object.entries(n.labels || {});
-  if (labels.length) html += block('Labels', labels.length, `<div class="labels">${labels.map(([k, v]) => `<span class="lbl"><span>${esc(k)}=</span>${esc(v)}</span>`).join('')}</div>`);
-  const ann = Object.entries(d.annotations || {});
-  if (ann.length) html += `<details class="blk"><summary>Annotations <span class="cnt">${ann.length}</span></summary>
-    <div class="labels">${ann.map(([k, v]) => `<span class="lbl"><span>${esc(k)}=</span>${esc(v)}</span>`).join('')}</div></details>`;
-  return html;
+    `<div><span>${esc(x.key)}</span><small>${fmtBytes(x.size)}${x.binary ? ' · binary' : ''}</small></div>`).join('')}</div>
+    ${d.kind === 'Secret' ? `<p class="note">${svgI('<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>')}Giá trị của Secret không bao giờ được gửi lên trình duyệt.</p>` : ''}` : '<p class="muted">Trống</p>', '', 'half');
+  if (d.rules) html += block('Rules', d.rules.length, `<div class="card flush"><table class="tbl"><tr><th>Verbs</th><th>Resources</th><th>API groups</th></tr>${d.rules.map(r =>
+    `<tr><td>${esc(r.verbs)}</td><td>${esc(r.resources)}</td><td>${esc(r.apiGroups)}</td></tr>`).join('')}</table></div>`);
+  const labels = Object.entries(n.labels || {}), ann = Object.entries(d.annotations || {});
+  const pairs = list => `<div class="labels">${list.map(([k, v]) => `<span class="lbl"><span>${esc(k)}=</span>${esc(v)}</span>`).join('')}</div>`;
+  html += block('Metadata', null,
+    kv([n.created && ['Tạo lúc', `${esc(fmtTime(n.created))} <span class="dim">· ${esc(age(n.created))} trước</span>`],
+        n.group && ['API group', esc(n.group), 'mono']])
+    + (labels.length ? `<div class="sub-h">Labels <span class="cnt">${labels.length}</span></div>${pairs(labels)}` : '')
+    + (ann.length ? `<details class="ann"><summary class="sub-h">Annotations <span class="cnt">${ann.length}</span></summary>${pairs(ann)}</details>` : ''));
+  return wrap(html);
 }
 
-function block(title, count, body) {
-  return `<div class="blk"><h3>${esc(title)}${count != null ? `<span class="cnt">${count}</span>` : ''}</h3>${body}</div>`;
+const fmtBytes = b => b < 1024 ? `${b} B` : b < 1 << 20 ? `${(b / 1024).toFixed(1)} KiB` : `${(b / (1 << 20)).toFixed(1)} MiB`;
+
+/* Service → the pods behind it (EndpointSlices): pod (clickable), address, node, ready / not ready / terminating */
+function endpointsBlock(n, eps) {
+  const sel = n.info?.selector;
+  if (!eps.length) return block('Endpoints', 0, `<div class="ep-empty">${n.info?.type === 'ExternalName'
+    ? `ExternalName: trỏ tới <code>${esc(n.info.externalName || '')}</code>, không có endpoint.`
+    : sel ? `Không có endpoint nào. Không pod nào đang chạy khớp selector <code>${esc(sel)}</code>.`
+    : 'Service không có selector: endpoint phải tạo thủ công (EndpointSlice).'}</div>`);
+  const ready = eps.filter(e => e.ready).length;
+  const st = e => e.terminating ? ['warn', 'đang dừng'] : e.ready ? ['ok', 'sẵn sàng'] : e.serving ? ['warn', 'serving'] : ['error', 'chưa ready'];
+  const rows = eps.map(e => {
+    const [h, label] = st(e);
+    const t = e.target && findNode(e.targetKind || 'Pod', e.targetNs, e.target);
+    const tgt = e.target ? (t ? `<a data-goto="${esc(t.id)}">${esc(e.target)}</a>` : esc(e.target)) : '<span class="dim">—</span>';
+    const nd = e.node && findNode('Node', null, e.node);
+    const port = (e.ports || '').split(', ').map(p => p.replace(/^\S+ (?=\d)/, '').replace('/TCP', '')).join(', ');
+    const node = e.node ? (nd ? `<a data-goto="${esc(nd.id)}">${esc(typeof shortNode === 'function' ? shortNode(e.node) : e.node)}</a>` : esc(e.node)) : '';
+    return `<tr class="${h}"><td class="k"><div class="ep-p"><span class="ep-dot" style="--c:var(--${h})" title="${label}"></span><span class="ep-n" title="${esc(e.target || '')}">${tgt}</span></div>
+        ${node ? `<div class="ep-sub">node ${node}</div>` : ''}</td>
+      <td class="mono">${esc(e.ip)}${port ? `<span class="dim">:${esc(port)}</span>` : ''}</td>
+      <td class="ep-st" style="--c:var(--${h})">${label}</td></tr>`;
+  }).join('');
+  return block('Endpoints', eps.length, `<div class="card flush"><table class="tbl xtbl eptbl"><thead><tr><th>Pod</th><th>Địa chỉ</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`,
+    `<span class="${ready === eps.length ? 'ok-n' : ready ? 'bad-n' : 'bad-n'}">${ready}/${eps.length} sẵn sàng</span>`);
+}
+
+function block(title, count, body, aside = '', cls = '') {
+  return `<section class="blk ${cls}"><h3>${esc(title)}${count != null ? `<span class="cnt">${count}</span>` : ''}${aside ? `<span class="aside">${aside}</span>` : ''}</h3>${body}</section>`;
 }
 
 function containerCard(c) {
   const st = c.state === 'running' ? (c.ready === false ? 'warn' : 'ok') : c.state === 'waiting' ? (/BackOff|Err|Invalid|Config/.test(c.reason || '') ? 'error' : 'warn')
     : c.state === 'terminated' ? (c.exitCode === 0 ? 'ok' : 'error') : 'unknown';
-  const stateText = c.state ? `${c.state}${c.reason ? ' · ' + c.reason : ''}${c.state === 'running' ? (c.ready ? ' · ready' : ' · chưa ready') : ''}${c.exitCode != null ? ' · exit ' + c.exitCode : ''}` : 'template';
-  const res = (label, o) => o && Object.keys(o).length ? `<span class="chip-kv"><b>${label}</b>${Object.entries(o).map(([k, v]) => `${esc(k)} ${esc(v)}`).join(' · ')}</span>` : '';
+  const stateText = c.state ? `${c.reason || c.state}${c.state === 'running' ? (c.ready ? ' · ready' : ' · chưa ready') : ''}${c.exitCode != null ? ' · exit ' + c.exitCode : ''}` : 'template';
+  const res = o => o && Object.keys(o).length ? Object.entries(o).map(([k, v]) => `<span class="q"><span class="dim">${esc(k)}</span> ${esc(v)}</span>`).join('') : '';
   const last = c.lastState;
-  return `<div class="ctr">
-    <div class="ctr-h"><i style="--c:${hvar(st)}"></i><b>${esc(c.name)}</b>${c.init ? '<small>init</small>' : ''}
-      <span class="st" style="--c:${hvar(st)}">${esc(stateText)}</span>
-      ${c.restarts ? `<span class="rs" title="số lần restart">↻ ${c.restarts}</span>` : ''}</div>
-    <div class="ctr-img">${esc(c.image)}</div>
+  const noRes = !Object.keys(c.requests || {}).length && !Object.keys(c.limits || {}).length;
+  return `<div class="ctr" style="--c:${hvar(st)}">
+    <div class="ctr-h"><i></i><b>${esc(c.name)}</b>
+      <span class="st">${esc(stateText)}</span>
+      ${c.restarts ? `<span class="rs" title="số lần restart">${svgI('<path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5"/>')}${c.restarts}</span>` : ''}</div>
     ${c.message ? `<div class="ctr-msg">${esc(c.message)}</div>` : ''}
-    ${last ? `<div class="ctr-last">Lần chạy trước: <b>${esc(last.reason)}</b> · exit ${esc(last.exitCode)}${last.finishedAt ? ` · ${age(last.finishedAt)} trước` : ''}${last.message ? `<div>${esc(last.message)}</div>` : ''}</div>` : ''}
-    <div class="ctr-res">${res('requests', c.requests)}${res('limits', c.limits)}${c.usage ? res('đang dùng', c.usage) : ''}
-      ${!Object.keys(c.requests || {}).length && !Object.keys(c.limits || {}).length ? '<span class="chip-kv muted">không đặt requests/limits</span>' : ''}</div>
-    ${(c.ports || []).length || Object.keys(c.probes || {}).length ? `<dl class="ctr-kv">
-      ${(c.ports || []).length ? `<dt>ports</dt><dd>${esc(c.ports.join(', '))}</dd>` : ''}
-      ${Object.entries(c.probes || {}).map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}</dl>` : ''}
+    ${kv([
+      ['Image', esc(c.image), 'mono'],
+      last && ['Lần chạy trước', `<span class="bad">${esc(last.reason)}</span> · exit ${esc(last.exitCode)}${last.finishedAt ? ` · ${age(last.finishedAt)} trước` : ''}${last.message ? `<div class="dim">${esc(last.message)}</div>` : ''}`],
+      noRes ? ['Tài nguyên', '<span class="dim">không đặt requests/limits</span>'] : null,
+      res(c.requests) && ['Requests', res(c.requests), 'mono'],
+      res(c.limits) && ['Limits', res(c.limits), 'mono'],
+      c.usage && res(c.usage) && ['Đang dùng', res(c.usage), 'mono'],
+      (c.ports || []).length && ['Ports', esc(c.ports.join(', ')), 'mono'],
+      ...Object.entries(c.probes || {}).map(([k, v]) => [k[0].toUpperCase() + k.slice(1), esc(v)]),
+    ])}
   </div>`;
 }
 
+/* "32532612Ki" / "200492418301" → "31.0Gi" / "186.7Gi"; cpu and pod counts stay as they are */
+function fmtQty(q, bytes) {
+  if (!bytes || q == null) return String(q ?? '?');
+  const m = /^(\d+(?:\.\d+)?)(Ki|Mi|Gi|Ti|k|M|G)?$/.exec(String(q));
+  if (!m) return String(q);
+  const mult = { Ki: 1024, Mi: 1 << 20, Gi: 1 << 30, Ti: 2 ** 40, k: 1e3, M: 1e6, G: 1e9 }[m[2]] || 1;
+  const b = Number(m[1]) * mult;
+  return b >= 2 ** 40 ? (b / 2 ** 40).toFixed(1) + 'Ti' : b >= 1 << 30 ? (b / (1 << 30)).toFixed(1) + 'Gi' : Math.round(b / (1 << 20)) + 'Mi';
+}
+
 function nodeDetails(nd) {
-  const rows = [];
+  const cap = [];
   for (const r of ['cpu', 'memory', 'pods', 'ephemeral-storage']) {
-    if (nd.allocatable && nd.allocatable[r]) rows.push([r, `${nd.allocatable[r]} khả dụng / ${nd.capacity?.[r] ?? '?'} tổng`]);
+    if (!nd.allocatable || !nd.allocatable[r]) continue;
+    const bytes = r === 'memory' || r === 'ephemeral-storage';
+    cap.push([r === 'ephemeral-storage' ? 'Ephemeral storage' : r === 'cpu' ? 'CPU' : r === 'pods' ? 'Pods' : 'Memory',
+      `${esc(fmtQty(nd.allocatable[r], bytes))} <span class="dim">/ ${esc(fmtQty(nd.capacity?.[r], bytes))}</span>`, 'mono']);
   }
-  if (nd.usage) rows.push(['đang dùng', `cpu ${nd.usage.cpu} · memory ${nd.usage.memory}`]);
-  rows.push(['số pod', String(nd.pods)]);
-  if (nd.system) Object.entries(nd.system).forEach(([k, v]) => rows.push([k, v]));
-  rows.push(['taints', nd.taints.length ? nd.taints.join(', ') : 'không có']);
-  if (nd.unschedulable) rows.push(['cordoned', 'có (không nhận pod mới)']);
-  return dl(rows);
+  cap.push(['Pod đang chạy', esc(String(nd.pods)), 'mono']);
+  if (nd.unschedulable) cap.push(['Cordoned', 'có, không nhận pod mới', 'warn']);
+  const sys = Object.entries(nd.system || {}).map(([k, v]) => [humanKey(k), esc(v), k === 'kernel' || k === 'runtime' || k === 'kubelet' ? 'mono' : '']);
+  sys.push(['Taints', nd.taints.length ? esc(nd.taints.join(', ')) : '<span class="dim">không có</span>', nd.taints.length ? 'mono' : '']);
+  return block('Khả dụng / Tổng', null, kv(cap), '', 'half') + block('Hệ thống', null, kv(sys), '', 'half');
 }
 
 function eventsTab(d) {
@@ -1227,16 +1618,16 @@ async function renderHistoryTab(n, keep) {
   }
 }
 
-/* Describe tab: the exact `kubectl describe` text, loaded once per object, refreshed on demand */
+/* Describe tab: `kubectl describe`-identical text generated by the server (no kubectl needed), loaded once per object */
 async function renderDescribeTab(n, keep) {
   const key = 'describe:' + n.id;
   if (keep && $('dpBody').dataset.key === key) return;
   $('dpBody').dataset.key = key; $('dpBody').dataset.html = '';
   $('dpBody').innerHTML = `<div class="yaml-tab">
-    <div class="yaml-bar"><code class="muted small" id="descCmd">kubectl describe …</code>
+    <div class="yaml-bar"><code class="muted small" id="descCmd">describe …</code>
       <button class="tool" data-desc="reload"><svg class="i" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 15.5-6.2L21 8M21 3v5h-5"/></svg>Tải lại</button>
       <button class="tool" data-desc="copy">Sao chép</button></div>
-    <pre class="describe" id="descText"><span class="muted">Đang chạy kubectl describe…</span></pre></div>`;
+    <pre class="describe" id="descText"><span class="muted">Đang tải…</span></pre></div>`;
   try {
     const r = await fetch('/api/describe?' + new URLSearchParams({ kind: n.kind, group: n.group || '', namespace: n.namespace || '', name: n.name }));
     const body = await r.json();
@@ -1312,7 +1703,27 @@ function loadDetails(n) {
 }
 
 /* tabs, panel width, YAML tab buttons */
+const closeMore = () => { if (!state.moreOpen) return; state.moreOpen = null; const n = state.graph.nodes.find(x => x.id === state.selected); if (n) patch('dpHead', panelHeader(n, state.details.id === n.id ? state.details.data : null)); };
+document.addEventListener('pointerdown', e => { if (state.moreOpen && !e.target.closest('.dp-more-wrap')) closeMore(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && state.moreOpen) { e.stopPropagation(); closeMore(); } }, true);
 $('detail').addEventListener('click', e => {
+  if (e.target.closest('[data-more]')) {
+    state.moreOpen = state.moreOpen === state.selected ? null : state.selected;
+    const n = state.graph.nodes.find(x => x.id === state.selected);
+    if (n) patch('dpHead', panelHeader(n, state.details.id === n.id ? state.details.data : null));
+    const menu = document.querySelector('.dp-menu'); // keep it inside the panel: open to the right when there is no room on the left
+    if (menu && menu.getBoundingClientRect().left < $('detail').getBoundingClientRect().left + 8) { menu.style.right = 'auto'; menu.style.left = '0'; }
+    return;
+  }
+  if (e.target.closest('.dp-menu .mi')) setTimeout(closeMore); // after the item's own handler ran
+  if (e.target.closest('[data-cond-toggle]')) {
+    state.condOpen = !state.condOpen; store.set('condOpen', state.condOpen ? '1' : '0');
+    const n = state.graph.nodes.find(x => x.id === state.selected); if (n) showDetailRaw(n, true);
+    $('detail').querySelector('[data-cond-toggle]')?.focus({ preventScroll: true });
+    return;
+  }
+  const cpn = e.target.closest('[data-copyname]');
+  if (cpn) { navigator.clipboard?.writeText(cpn.dataset.copyname).then(() => typeof toast === 'function' && toast('Đã sao chép tên')); return; }
   const t = e.target.closest('[data-tab]');
   if (t) {
     state.tab = t.dataset.tab; store.set('tab', state.tab);
@@ -1320,12 +1731,8 @@ $('detail').addEventListener('click', e => {
     if (n) { $('dpBody').dataset.key = ''; $('dpBody').dataset.html = ''; $('dpBody').scrollTop = 0; showDetailRaw(n, true); }
     return;
   }
-  if (e.target.closest('#dpWide')) {
-    $('main').classList.toggle('wide-panel'); store.set('widePanel', $('main').classList.contains('wide-panel') ? '1' : '0');
-    setTimeout(() => { cy.resize(); state.yamlView && state.yamlView.refresh(); }, 240);
-    const n = state.graph.nodes.find(x => x.id === state.selected); if (n) showDetailRaw(n, true);
-    return;
-  }
+  if (e.target.closest('#dpWide')) { togglePanelWide(); return; }
+  if (e.target.closest('#dpMode')) { togglePanelMode(); return; }
   const dsc = e.target.closest('[data-desc]');
   if (dsc) {
     if (dsc.dataset.desc === 'reload') { const n = state.graph.nodes.find(x => x.id === state.selected); if (n) renderDescribeTab(n, false); }
@@ -1338,20 +1745,129 @@ $('detail').addEventListener('click', e => {
   if (y && y.dataset.yaml === 'compare') { const n = state.graph.nodes.find(x => x.id === state.selected); if (n && typeof compareObject === 'function') compareObject(n); }
   if (y && y.dataset.yaml === 'copy' && state.yamlView) navigator.clipboard?.writeText(state.yamlView.getValue()).then(() => typeof toast === 'function' && toast('Đã sao chép YAML'));
 });
-if (store.get('widePanel') === '1') $('main').classList.add('wide-panel');
-(() => { const w = parseInt(store.get('panelW')); if (w > 300) $('main').style.setProperty('--panel-w', w + 'px'); })();
+$('detail').addEventListener('scroll', e => { const t = e.target; if (t.id === 'dpTabs') t.classList.toggle('ovf', t.scrollLeft + t.clientWidth < t.scrollWidth - 2); }, true);
+
+/*
+ * Panel width: one number (--panel-w, px), persisted. Drag the left edge, arrow keys on it, double-click = default.
+ * The ⤢ button jumps between the user's normal width and "wide" (62% of the area). Layout inside the panel
+ * (two columns…) follows the real width through a container query, not a mode flag. The area left of the panel
+ * keeps at least MIN_REST px, also when the window shrinks; dragging past the right edge closes the panel.
+ */
+const PANEL_DEFAULT = 440, PANEL_MIN = 320, MIN_REST = 360, CLOSE_BELOW = 220;
+const mainW = () => $('main').getBoundingClientRect().width || window.innerWidth;
+/*
+ * Push or overlay, remembered per kind of view: the graph pushes (it stays whole and clickable next to the details),
+ * lists (table, timeline, Helm, security) get an overlay so their columns aren't squeezed. The button in the panel
+ * header switches the current view's mode.
+ */
+const panelViewKey = () => (document.querySelector('.app-view:not([hidden])') ? 'list' : 'graph');
+const panelMode = () => store.get('panelMode.' + panelViewKey()) || (panelViewKey() === 'graph' ? 'push' : 'overlay');
+const panelModeIcon = () => (panelMode() === 'overlay'
+  ? '<rect x="3" y="4" width="18" height="16" rx="2"/><rect x="11" y="7" width="8" height="10" rx="1.5"/>'   // floating card
+  : '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M14 4v16"/>');                                  // split
+const panelModeTitle = () => (panelMode() === 'overlay' ? 'Đang đè lên nội dung — bấm để đẩy nội dung sang' : 'Đang đẩy nội dung sang — bấm để đè lên nội dung');
+const panelMax = () => Math.max(PANEL_MIN, mainW() - (panelMode() === 'overlay' ? 120 : MIN_REST));
+const clampPanel = w => Math.round(Math.max(PANEL_MIN, Math.min(panelMax(), w)));
+const wideTarget = () => clampPanel(mainW() * 0.62);
+let panelW = (() => { const w = parseInt(store.get('panelW')); return w >= PANEL_MIN ? w : PANEL_DEFAULT; })();
+function panelIsWide() { return panelW >= Math.min(wideTarget(), panelMax()) - 8 && panelW > PANEL_DEFAULT + 40; }
+function applyPanelW(w, persist = true) {
+  panelW = w;
+  const shown = clampPanel(w); // never wider than the window allows; the wish (panelW) stays for when it grows again
+  $('main').style.setProperty('--panel-w', shown + 'px');
+  const h = $('dpResize');
+  if (h) { h.setAttribute('aria-valuenow', shown); h.setAttribute('aria-valuemax', Math.round(panelMax())); }
+  if (persist) store.set('panelW', String(Math.round(w)));
+}
+function refreshWideButton() {
+  const b = $('dpWide'); if (!b) return;
+  const wide = panelIsWide();
+  b.title = wide ? 'Thu hẹp panel' : 'Mở rộng panel';
+  b.setAttribute('aria-pressed', wide);
+  b.innerHTML = svgI(wide ? '<path d="M4 14h6v6M20 10h-6V4M14 10l7-7M3 21l7-7"/>' : '<path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>');
+}
+function togglePanelWide() {
+  if (panelIsWide()) applyPanelW(parseInt(store.get('panelWNormal')) || PANEL_DEFAULT);
+  else { store.set('panelWNormal', String(clampPanel(panelW))); applyPanelW(wideTarget()); }
+  refreshWideButton();
+}
+function applyPanelMode() {
+  $('main').classList.toggle('panel-overlay', panelMode() === 'overlay');
+  applyPanelW(panelW, false);
+  const b = $('dpMode');
+  if (b) { b.title = panelModeTitle(); b.setAttribute('aria-pressed', panelMode() === 'overlay'); b.innerHTML = svgI(panelModeIcon()); }
+  refreshWideButton();
+}
+function togglePanelMode() {
+  store.set('panelMode.' + panelViewKey(), panelMode() === 'overlay' ? 'push' : 'overlay');
+  applyPanelMode();
+}
+applyPanelMode();
+addEventListener('resize', () => applyPanelW(panelW, false));
+/*
+ * Overlay mode: a click on the empty background of the list view (not a row, button, field, the sidebar or toolbars)
+ * closes the panel, like a drawer. Never on a drag / text selection, nor while a scale or the ⋯ menu is open.
+ * (Push mode: the graph's own empty-background tap already closes it.)
+ */
+const PANEL_BG = '.app-view, .gv-body, .gv-main, .gv-wrap, .tl-rows, .tl-empty, .hm-body, .hm-main, .hm-list, .hm-detail, .sec-body, .sec-list';
+let panelDown = null;
+// capture phase: runs before the ⋯ menu's own outside-click handler closes it, so we still see it was open
+document.addEventListener('pointerdown', e => { panelDown = { x: e.clientX, y: e.clientY, t: e.target, busy: !!(state.moreOpen || state.scaleOpen) }; }, true);
+document.addEventListener('click', e => {
+  const m = $('main');
+  if (!m.classList.contains('panel-overlay') || m.classList.contains('no-panel')) return;
+  if (!panelDown || panelDown.t !== e.target || Math.hypot(e.clientX - panelDown.x, e.clientY - panelDown.y) > 5) return;
+  if (!e.target.matches?.(PANEL_BG) || !getSelection().isCollapsed || panelDown.busy) return; // first click only closes the menu
+  clearDetail();
+});
+// switching between the graph and a list view switches to that view's mode
+new MutationObserver(applyPanelMode).observe(document.body, { subtree: true, attributes: true, attributeFilter: ['hidden'] });
+
+/* everything that depends on the panel size follows it: graph canvas, tab overflow fade, YAML viewer, wide button */
+new ResizeObserver(() => { if (typeof cy !== 'undefined') cy.resize(); }).observe($('cy'));
+new ResizeObserver(() => {
+  const t = $('dpTabs'); if (t) t.classList.toggle('ovf', t.scrollWidth > t.clientWidth + 2 && t.scrollLeft + t.clientWidth < t.scrollWidth - 2);
+  state.yamlView && state.yamlView.refresh();
+  refreshWideButton();
+}).observe($('detail'));
+
 $('detail').addEventListener('pointerdown', e => {
-  if (!e.target.closest('#dpResize')) return;
+  const h = e.target.closest('#dpResize');
+  if (!h || e.button !== 0) return;
   e.preventDefault();
-  $('main').classList.remove('wide-panel'); $('main').classList.add('resizing');
+  h.setPointerCapture(e.pointerId);
+  $('main').classList.add('resizing');
   const right = $('main').getBoundingClientRect().right;
-  const move = ev => $('main').style.setProperty('--panel-w', Math.max(320, Math.min(window.innerWidth * 0.8, right - ev.clientX)) + 'px');
-  const up = () => {
-    removeEventListener('pointermove', move); removeEventListener('pointerup', up);
-    $('main').classList.remove('resizing'); store.set('panelW', parseInt($('main').style.getPropertyValue('--panel-w')));
-    cy.resize(); state.yamlView && state.yamlView.refresh();
+  let raf = 0, want = panelW, closing = false;
+  const move = ev => {
+    want = right - ev.clientX;
+    closing = want < CLOSE_BELOW;
+    if (raf) return;
+    raf = requestAnimationFrame(() => {
+      raf = 0;
+      $('main').classList.toggle('closing-panel', closing);
+      if (!closing) applyPanelW(clampPanel(want), false);
+      h.dataset.w = closing ? 'thả để đóng' : clampPanel(want) + 'px';
+    });
   };
-  addEventListener('pointermove', move); addEventListener('pointerup', up);
+  const up = () => {
+    h.removeEventListener('pointermove', move); h.removeEventListener('pointerup', up); h.removeEventListener('pointercancel', up);
+    $('main').classList.remove('resizing', 'closing-panel');
+    delete h.dataset.w;
+    if (closing) { setPanel(false); return; } // the saved width stays for next time
+    applyPanelW(clampPanel(want));
+  };
+  h.addEventListener('pointermove', move); h.addEventListener('pointerup', up); h.addEventListener('pointercancel', up);
+});
+$('detail').addEventListener('dblclick', e => { if (e.target.closest('#dpResize')) { applyPanelW(PANEL_DEFAULT); refreshWideButton(); } });
+$('detail').addEventListener('keydown', e => {
+  if (!e.target.closest('#dpResize')) return;
+  const step = e.shiftKey ? 96 : 24, cur = clampPanel(panelW);
+  const next = { ArrowLeft: cur + step, ArrowRight: cur - step, Home: PANEL_MIN, End: panelMax() }[e.key];
+  if (e.key === 'Enter') { e.preventDefault(); togglePanelWide(); return; }
+  if (next == null) return;
+  e.preventDefault(); e.stopPropagation();
+  applyPanelW(clampPanel(next));
 });
 
 /* namespace (group / tile) panel */
@@ -1365,28 +1881,36 @@ function showNsPanel(ns) {
   const s = summarize(nodes, ns);
   const expanded = state.expanded.has(ns);
   const problems = nodes.filter(n => n.health === 'error' || n.health === 'warn').sort((a, b) => (a.health === 'error' ? 0 : 1) - (b.health === 'error' ? 0 : 1));
-  $('detail').innerHTML = `
-    <div class="d-head">
-      <div class="tile" style="--c:var(--accent)"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3" stroke-dasharray="3 3"/></svg></div>
-      <div style="min-width:0"><div class="kind">Namespace${s.system ? ' · hệ thống' : ''}</div><h2>${esc(s.label)}</h2></div>
-      <button class="icon-btn close" id="dclose" title="Đóng"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
-    </div>
-    <div class="badges">
-      <span class="badge h" style="--c:var(--error)"><i></i>${s.err} lỗi</span>
-      <span class="badge h" style="--c:var(--warn)"><i></i>${s.warn} cảnh báo</span>
-      <span class="badge h" style="--c:var(--ok)"><i></i>${s.ok} ổn</span>
-    </div>
-    <div class="actions">
-      <button class="btn primary" data-ns-act="${expanded ? 'collapse' : 'expand'}">${expanded ? 'Thu gọn' : 'Mở rộng'}</button>
-      ${ns !== CLUSTER ? `<button class="btn" data-ns-act="open">Mở riêng namespace</button>` : ''}
-    </div>
-    ${sec('Tổng quan', dl([['workload', String(s.workloads)], ['pod', String(s.pods)], ['service', String(s.services)], ['tổng tài nguyên', String(s.total)]]))}
-    ${sec(`Cần chú ý · ${problems.length}`, problems.length ? problems.slice(0, 40).map(o => {
-      const ok = kindInfo(o);
-      return `<div class="rel" data-id="${esc(o.id)}"><div class="mini" style="--c:${ok.color}">${icon(iconKind(o))}</div>
-        <div class="nm"><small>${esc(ok.label)}</small>${esc(o.name)}${o.reason ? `<div class="why">${esc(o.reason)}</div>` : ''}</div>
-        <span class="st" style="--c:${hvar(o.health)}"><i></i>${esc(truncMid(o.status, 16))}</span></div>`;
-    }).join('') : '<div class="muted">Không có vấn đề nào 🎉</div>')}`;
+  const nsNode = state.graph.nodes.find(n => n.kind === 'Namespace' && n.name === ns);
+  const a = nsNode && age(nsNode.created);
+  $('detail').innerHTML = `<div class="dp">
+    <div class="dp-resize" id="dpResize" role="separator" aria-orientation="vertical" aria-label="Độ rộng panel" tabindex="0" title="Kéo để đổi độ rộng · nhấp đúp: mặc định · kéo hết sang phải: đóng"></div>
+    <header class="dp-head">
+      <div class="dp-top">
+        <div class="tile" style="--c:var(--accent)"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3" stroke-dasharray="3 3"/></svg></div>
+        <div class="dp-id"><div class="dp-kind">Namespace${s.system ? '<span class="ns">hệ thống</span>' : ''}</div><h2>${esc(s.label)}</h2></div>
+        <button class="icon-btn sm" id="dclose" title="Đóng (Esc)">${svgI('<path d="M6 6l12 12M18 6L6 18"/>')}</button>
+      </div>
+      <div class="dp-status">
+        ${s.err ? `<span class="pill h" style="--c:var(--error)"><i></i>${s.err} lỗi</span>` : ''}
+        ${s.warn ? `<span class="pill h" style="--c:var(--warn)"><i></i>${s.warn} cảnh báo</span>` : ''}
+        <span class="pill h" style="--c:var(--ok)"><i></i>${s.ok} ổn định</span>
+        ${a ? `<span class="meta">${svgI('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>')}${a}</span>` : ''}
+      </div>
+      <div class="dp-tools">
+        <button class="tool" data-ns-act="${expanded ? 'collapse' : 'expand'}">${expanded ? svgI('<path d="M4 14h6v6M20 10h-6V4M14 10l7-7M3 21l7-7"/>') + 'Thu gọn' : svgI('<path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>') + 'Mở rộng trên sơ đồ'}</button>
+        ${ns !== CLUSTER ? `<button class="tool" data-ns-act="open">${svgI('<path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>')}Chỉ xem namespace này</button>` : ''}
+      </div>
+    </header>
+    <div class="dp-body">
+      ${block('Tổng quan', null, kv([['Workload', String(s.workloads), 'mono'], ['Pod', String(s.pods), 'mono'], ['Service', String(s.services), 'mono'], ['Tổng tài nguyên', String(s.total), 'mono']]))}
+      ${block('Cần chú ý', problems.length, problems.length ? `<div class="rels">${problems.slice(0, 40).map(o => {
+        const ok = kindInfo(o);
+        return `<div class="rel two" data-id="${esc(o.id)}"><div class="mini" style="--c:${ok.color}">${icon(iconKind(o))}</div>
+          <div class="nm"><small>${esc(ok.label)}</small>${esc(o.name)}${o.reason ? `<div class="why">${esc(o.reason)}</div>` : ''}</div>
+          <span class="st" style="--c:${hvar(o.health)}"><i></i>${esc(truncMid(o.status, 16))}</span></div>`;
+      }).join('')}</div>` : `<div class="dp-empty-tab">Không có vấn đề nào</div>`)}
+    </div></div>`;
 }
 
 function expandNs(ns, focus = true) {
@@ -1410,8 +1934,8 @@ $('detail').addEventListener('click', e => {
     if (a !== 'open') showNsPanel(ns);
     return;
   }
-  const r = e.target.closest('.rel'); if (!r) return;
-  const id = r.dataset.id;
+  const r = e.target.closest('.rel, [data-goto]'); if (!r) return;
+  const id = r.dataset.id || r.dataset.goto;
   let n = cy.getElementById(id);
   if (n.empty() && isAll()) { // inside a collapsed namespace: expand it first
     const raw = state.graph.nodes.find(x => x.id === id);
@@ -1423,7 +1947,11 @@ $('detail').addEventListener('click', e => {
 });
 
 /* ================= interactions ================= */
-cy.on('tap', 'node.card', e => showDetail(e.target));
+cy.on('tap', 'node.card', e => {
+  const pg = e.target.data('raw')?.podGroup;
+  if (pg) { state.podGroupsOpen.add(pg); state.structureKey = ''; render(false); toast('Đã mở ' + e.target.data('raw').podIds.length + ' pod'); return; }
+  showDetail(e.target);
+});
 cy.on('tap', 'node.tile', e => { const ns = e.target.data('ns'); expandNs(ns); showNsPanel(ns); });
 cy.on('tap', 'node.group', e => showNsPanel(e.target.data('ns')));
 cy.on('tap', e => { if (e.target === cy) clearDetail(); });
@@ -1455,7 +1983,7 @@ $('fit').onclick = () => cy.animate({ fit: { padding: 40 }, duration: 300 });
 $('relayout').onclick = () => { state.manual.clear(); layout(true, true); };
 let expandArmed = null;
 $('expandAll').onclick = () => {
-  const total = state.graph.nodes.filter(isVisible).length;
+  const total = simplifyGraph(state.graph).nodes.filter(isVisible).length; // cards actually drawn (big pod sets are grouped)
   if (total > 300 && !expandArmed) { // two-step confirm instead of a blocking dialog
     const btn = $('expandAll'), old = btn.innerHTML;
     btn.innerHTML = `Vẽ ${total} thẻ? Bấm lần nữa`;
@@ -1480,7 +2008,8 @@ document.addEventListener('keydown', e => {
   if (!typing && state.selected && ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
     e.preventDefault(); moveSelection(e.key); return;
   }
-  if (!typing && state.selected && e.key === 'Enter' && typeof podsFor === 'function' && podsFor(state.selected).length) {
+  const onControl = document.activeElement?.matches?.('button, a, summary, [role=tab], [tabindex]:not(#cy)');
+  if (!typing && !onControl && state.selected && e.key === 'Enter' && typeof podsFor === 'function' && podsFor(state.selected).length) {
     openLogsFor(state.selected); return;
   }
   if (e.key === 'Escape') { $('q').value = ''; state.query = ''; state.health = null; $('q').blur(); cy.$(':selected').unselect(); clearDetail(); updateCounts(); applyFocus(); }
@@ -1505,11 +2034,40 @@ function moveSelection(key) {
 }
 
 /* ================= live data (SSE) ================= */
-function setLive(on, text) { $('live').className = 'live' + (on ? ' on' : ''); $('live').querySelector('.txt').textContent = text; }
-function banner(title, detail) {
-  $('banner').classList.toggle('show', !!title); $('bannerT').textContent = title || ''; $('bannerD').textContent = detail || '';
+function setLive(on, text, err) { $('live').className = 'live' + (on ? ' on' : '') + (err ? ' err' : ''); $('live').querySelector('.txt').textContent = text; }
+function banner(title, detail, err, hint) {
+  $('banner').classList.toggle('show', !!title); $('banner').classList.toggle('err', !!err);
+  $('bannerT').textContent = title || ''; $('bannerD').textContent = detail || '';
+  $('bannerH').hidden = !hint; $('bannerH').textContent = hint || '';
 }
-function currentNs() { return $('ns').value || new URLSearchParams(location.search).get('ns') || store.get('ns') || 'default'; }
+/* cache warnings → banner: failures first (grouped by message server-side), "Đang đồng bộ: …" is just loading */
+function syncBanner(w, ctx) {
+  const failing = w.filter(x => !x.startsWith('Đang đồng bộ: '));
+  if (!w.length) { setLive(true, 'Live'); banner(''); return; }
+  if (!failing.length) { setLive(false, 'Đang đồng bộ'); banner('Đang đồng bộ với cluster…', w.join('\n')); return; }
+  const all = failing.join('\n');
+  const net = /timeout|timed out|connect|refused|unreachable|UnknownHost|No route|reset/i.test(all);
+  const auth = /401|403|Unauthorized|Forbidden|certificate|x509|token/i.test(all);
+  setLive(false, net ? 'Mất kết nối cluster' : 'Lỗi đồng bộ', true);
+  banner(net ? `Không kết nối được tới cluster${ctx ? ' ' + ctx : ''}` : 'Chưa đồng bộ được với cluster',
+    w.slice(0, 4).join('\n') + (w.length > 4 ? `\n… và ${w.length - 4} lỗi khác` : ''), true,
+    net ? 'Kiểm tra mạng/VPN, API server còn chạy không, và firewall có cho IP hiện tại của bạn vào cổng API server không. Đang tự thử lại.'
+      : auth ? 'Kiểm tra credentials/chứng chỉ trong kubeconfig và quyền RBAC của user.' : 'Đang tự thử lại.');
+}
+/* raw namespace choice from the select, else the URL / last session: "a", "*" or "a,b" (several ticked) */
+const nsSaved = () => new URLSearchParams(location.search).get('ns') || store.get('ns') || 'default';
+/* what the server is asked for: several namespaces are loaded as "*" and narrowed here (state.nsMulti) */
+function currentNs() { const v = $('ns').value || nsSaved(); return v.includes(',') ? '*' : v; }
+/* several namespaces ticked: Set of them (the server sends everything, nsKeep narrows it); otherwise null */
+state.nsMulti = (s => (s.includes(',') ? new Set(s.split(',').filter(Boolean)) : null))(nsSaved());
+const nsKeep = x => !state.nsMulti || !x.namespace || state.nsMulti.has(x.namespace);
+const nsParam = () => (state.nsMulti ? [...state.nsMulti].join(',') : $('ns').value);
+/* keep only the ticked namespaces (plus cluster-scoped objects, as in the all-namespaces view) and their edges */
+function nsFilterGraph(g) {
+  if (!state.nsMulti) return g;
+  const nodes = (g.nodes || []).filter(nsKeep), ids = new Set(nodes.map(n => n.id));
+  return { ...g, nodes, edges: (g.edges || []).filter(e => ids.has(e.source) && ids.has(e.target)) };
+}
 
 function fillNamespaces(list) {
   const cur = currentNs();
@@ -1525,23 +2083,48 @@ function connect() {
   setLive(false, 'Đang kết nối…');
   const es = state.es = new EventSource('/api/graph/stream?namespace=' + encodeURIComponent(ns));
   es.addEventListener('namespaces', e => fillNamespaces(JSON.parse(e.data)));
-  es.addEventListener('graph', e => {
-    const g = state.graph = JSON.parse(e.data);
-    $('ctx').querySelector('b').textContent = g.context || '—';
-    if (typeof renderNodebar === 'function') renderNodebar(g);
-    const w = g.warnings || [];
-    setLive(!w.length, w.length ? 'Đang đồng bộ' : 'Live');
-    banner(w.length ? 'Chưa đồng bộ được với cluster' : '', w.slice(0, 4).join('\n') + (w.length > 4 ? `\n… và ${w.length - 4} loại khác` : ''));
-    render(state.first);
-    state.first = false;
-  });
-  es.onerror = () => { setLive(false, 'Mất kết nối, đang thử lại…'); };
+  state.raw = null; // a snapshot of the previous namespace must not render after the switch
+  es.addEventListener('graph', e => { if (state.es !== es) return; state.raw = JSON.parse(e.data); queueGraph(); });
+  // later pushes only carry what changed: every one is applied (cheap), the page is redrawn once per frame at most
+  es.addEventListener('delta', e => { if (state.es !== es || !state.raw) return; state.raw = applyDelta(state.raw, JSON.parse(e.data)); queueGraph(); });
+  es.onerror = () => { setLive(false, 'Mất kết nối, đang thử lại…'); if (typeof checkSession === 'function') checkSession(); };
+}
+/* graph pushes: rendered once per frame at most, and not at all while the tab is hidden (catches up when it shows) */
+let graphScheduled = false;
+function queueGraph() {
+  if (graphScheduled) return;
+  graphScheduled = true;
+  const go = () => requestAnimationFrame(() => { graphScheduled = false; if (state.raw) applyGraph(); });
+  if (!document.hidden) { go(); return; }
+  const onVis = () => { if (document.hidden) return; document.removeEventListener('visibilitychange', onVis); go(); };
+  document.addEventListener('visibilitychange', onVis);
+}
+/* a "delta" push: upserted nodes, removed ids, added / removed edges (GraphStreamer.delta). Returns a new graph object. */
+function applyDelta(g, d) {
+  const nodes = g.nodes.slice(), at = new Map(nodes.map((n, i) => [n.id, i]));
+  d.nodes.forEach(n => { const i = at.get(n.id); if (i == null) { at.set(n.id, nodes.length); nodes.push(n); } else nodes[i] = n; });
+  const gone = new Set(d.removed);
+  const ek = e => e.source + '>' + e.target + '>' + e.type;
+  const del = new Map(); d.edgesDel.forEach(e => del.set(ek(e), (del.get(ek(e)) || 0) + 1));
+  const edges = g.edges.filter(e => { const k = ek(e), c = del.get(k); if (c) { del.set(k, c - 1); return false; } return true; }).concat(d.edgesAdd);
+  return { ...g, context: d.context, warnings: d.warnings, metrics: d.metrics, nodes: gone.size ? nodes.filter(n => !gone.has(n.id)) : nodes, edges };
+}
+function applyGraph() {
+  const raw = state.raw;
+  if (typeof nsCollectStats === 'function') nsCollectStats(raw);
+  const g = state.graph = nsFilterGraph(raw);
+  $('ctx').querySelector('b').textContent = g.context || '—';
+  if (typeof renderNodebar === 'function') renderNodebar(g);
+  syncBanner(g.warnings || [], g.context);
+  render(state.first);
+  state.first = false;
 }
 
 $('ns').addEventListener('change', () => {
-  store.set('ns', $('ns').value);
-  const u = new URL(location); u.searchParams.set('ns', $('ns').value); history.replaceState(null, '', u);
-  state.structureKey = ''; state.manual.clear(); clearDetail(); connect();
+  if (!state.nsPicking) state.nsMulti = null; // ":ns x", double-click on a namespace…: back to a single one
+  store.set('ns', nsParam());
+  const u = new URL(location); u.searchParams.set('ns', nsParam()); history.replaceState(null, '', u);
+  state.structureKey = ''; state.manual.clear(); state.podGroupsOpen.clear(); clearDetail(); connect();
 });
 
 fetch('/api/config').then(r => r.json()).then(c => {

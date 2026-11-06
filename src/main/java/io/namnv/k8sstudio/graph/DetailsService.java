@@ -51,7 +51,10 @@ public class DetailsService {
         d.put("helm", helm(m));
         d.put("manager", managedBy.detect(o).orElse(null));
         d.put("owners", nz(m.getOwnerReferences()).stream().map(r -> Map.of("kind", r.getKind(), "name", r.getName())).toList());
-        d.put("conditions", conditions(o));
+        List<Map<String, Object>> conds = conditions(o);
+        if (conds.isEmpty() && o instanceof GenericKubernetesResource r) conds = parentConditions(r);
+        d.put("conditions", conds);
+        d.put("tables", tables(o));
 
         switch (o) {
             case Pod p -> d.put("containers", podContainers(p));
@@ -64,6 +67,7 @@ public class DetailsService {
             case io.fabric8.kubernetes.api.model.Node n -> d.put("node", node(n));
             case ConfigMap c -> d.put("data", keys(c.getData(), c.getBinaryData()));
             case Secret s -> d.put("data", keys(s.getData(), null)); // sizes only, never values
+            case io.fabric8.kubernetes.api.model.Service svc -> d.put("endpoints", endpoints(svc));
             case Role r -> d.put("rules", rules(r.getRules()));
             case ClusterRole r -> d.put("rules", rules(r.getRules()));
             default -> { }
@@ -238,6 +242,175 @@ public class DetailsService {
     private static Map<String, String> quantities(Map<String, Quantity> q) {
         Map<String, String> out = new TreeMap<>();
         nz(q).forEach((k, v) -> out.put(k, v.toString()));
+        return out;
+    }
+
+
+    // ------------------------------------------------------------------ service endpoints
+
+    /** every address of the Service's EndpointSlices: pod, ip, ports, node, ready / serving / terminating */
+    private List<Map<String, Object>> endpoints(io.fabric8.kubernetes.api.model.Service svc) {
+        String ns = svc.getMetadata().getNamespace(), name = svc.getMetadata().getName();
+        List<Map<String, Object>> out = new ArrayList<>();
+        for (var es : ClusterCache.list(cache.endpointSlices, ns)) {
+            if (!name.equals(nz(es.getMetadata().getLabels()).get("kubernetes.io/service-name"))) continue;
+            String ports = nz(es.getPorts()).stream().map(p -> (p.getName() != null && !p.getName().isEmpty() ? p.getName() + " " : "")
+                    + p.getPort() + "/" + Objects.requireNonNullElse(p.getProtocol(), "TCP")).reduce((a, b) -> a + ", " + b).orElse("");
+            for (var ep : nz(es.getEndpoints())) {
+                var c = ep.getConditions();
+                for (String ip : nz(ep.getAddresses())) {
+                    Map<String, Object> m = new LinkedHashMap<>();
+                    m.put("ip", ip);
+                    m.put("ports", ports);
+                    m.put("family", es.getAddressType());
+                    m.put("ready", c == null || !Boolean.FALSE.equals(c.getReady()));
+                    m.put("serving", c == null || c.getServing() == null || c.getServing());
+                    m.put("terminating", c != null && Boolean.TRUE.equals(c.getTerminating()));
+                    if (ep.getTargetRef() != null) { m.put("targetKind", ep.getTargetRef().getKind()); m.put("target", ep.getTargetRef().getName());
+                        m.put("targetNs", Objects.requireNonNullElse(ep.getTargetRef().getNamespace(), ns)); }
+                    if (ep.getNodeName() != null) m.put("node", ep.getNodeName());
+                    if (ep.getZone() != null) m.put("zone", ep.getZone());
+                    out.add(m);
+                }
+            }
+        }
+        out.sort(Comparator.comparing((Map<String, Object> m) -> !(Boolean) m.get("ready")).thenComparing(m -> String.valueOf(m.get("target"))));
+        return out;
+    }
+
+    // ------------------------------------------------------------------ kind-specific tables (rules, routes, listeners…)
+
+    /** {title, columns, rows}: rendered as a table in the panel */
+    private static Map<String, Object> table(String title, List<String> columns, List<List<String>> rows) {
+        return Map.of("title", title, "columns", columns, "rows", rows);
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<Map<String, Object>> tables(HasMetadata o) {
+        List<Map<String, Object>> out = new ArrayList<>();
+        switch (o) {
+            case io.fabric8.kubernetes.api.model.admissionregistration.v1.ValidatingWebhookConfiguration v ->
+                    out.add(webhookTable(nz(v.getWebhooks()).stream().map(w -> webhookRow(w.getName(), w.getRules(), w.getFailurePolicy(),
+                            w.getNamespaceSelector(), w.getObjectSelector(), w.getClientConfig(), w.getTimeoutSeconds())).toList()));
+            case io.fabric8.kubernetes.api.model.admissionregistration.v1.MutatingWebhookConfiguration m ->
+                    out.add(webhookTable(nz(m.getWebhooks()).stream().map(w -> webhookRow(w.getName(), w.getRules(), w.getFailurePolicy(),
+                            w.getNamespaceSelector(), w.getObjectSelector(), w.getClientConfig(), w.getTimeoutSeconds())).toList()));
+            case io.fabric8.kubernetes.api.model.admissionregistration.v1.ValidatingAdmissionPolicy p -> {
+                out.add(table("Validations", List.of("Biểu thức CEL", "Thông báo khi vi phạm"),
+                        nz(p.getSpec().getValidations()).stream().map(v -> List.of(v.getExpression(),
+                                Objects.requireNonNullElse(v.getMessage(), Objects.requireNonNullElse(v.getMessageExpression(), "—")))).toList()));
+                if (p.getSpec().getMatchConstraints() != null)
+                    out.add(table("Áp dụng cho", List.of("Thao tác", "Tài nguyên"),
+                            nz(p.getSpec().getMatchConstraints().getResourceRules()).stream().map(r -> List.of(
+                                    String.join(", ", nz(r.getOperations())), resources(r.getApiGroups(), r.getResources()))).toList()));
+            }
+            case LimitRange lr -> {
+                List<List<String>> rows = new ArrayList<>();
+                for (LimitRangeItem it : nz(lr.getSpec().getLimits())) {
+                    Set<String> res = new TreeSet<>();
+                    for (Map<String, Quantity> q : Arrays.asList(it.getMin(), it.getMax(), it.getDefaultRequest(), it.getDefault())) if (q != null) res.addAll(q.keySet());
+                    for (String r : res) rows.add(List.of(it.getType() + " · " + r, q(it.getMin(), r), q(it.getMax(), r), q(it.getDefaultRequest(), r), q(it.getDefault(), r)));
+                }
+                out.add(table("Giới hạn", List.of("Loại · tài nguyên", "Min", "Max", "Request mặc định", "Limit mặc định"), rows));
+            }
+            case GenericKubernetesResource r -> {
+                Map<String, Object> spec = r.getAdditionalProperties().get("spec") instanceof Map<?, ?> s ? (Map<String, Object>) s : Map.of();
+                Map<String, Object> status = r.getAdditionalProperties().get("status") instanceof Map<?, ?> s ? (Map<String, Object>) s : Map.of();
+                switch (Objects.requireNonNullElse(r.getKind(), "")) {
+                    case "Gateway" -> {
+                        Map<String, Object> attached = new HashMap<>();
+                        maps(status.get("listeners")).forEach(l -> attached.put(String.valueOf(l.get("name")), l.get("attachedRoutes")));
+                        out.add(table("Listeners", List.of("Tên", "Giao thức", "Cổng", "Hostname", "TLS", "Route gắn vào"),
+                                maps(spec.get("listeners")).stream().map(l -> List.of(s(l.get("name")), s(l.get("protocol")), s(l.get("port")),
+                                        s(l.get("hostname")), l.get("tls") instanceof Map<?, ?> t ? s(t.get("mode")) : "—",
+                                        s(attached.get(String.valueOf(l.get("name")))))).toList()));
+                    }
+                    case "HTTPRoute", "GRPCRoute", "TCPRoute", "TLSRoute", "UDPRoute" -> {
+                        List<List<String>> rows = new ArrayList<>();
+                        for (Map<String, Object> rule : maps(spec.get("rules"))) {
+                            List<String> matches = maps(rule.get("matches")).stream().map(DetailsService::routeMatch).toList();
+                            String backends = maps(rule.get("backendRefs")).stream().map(b -> s(b.get("name")) + (b.get("port") != null ? ":" + b.get("port") : "")
+                                    + (b.get("weight") != null ? " (weight " + b.get("weight") + ")" : "")).reduce((a, b) -> a + ", " + b).orElse("—");
+                            String filters = maps(rule.get("filters")).stream().map(f -> s(f.get("type"))).reduce((a, b) -> a + ", " + b).orElse("—");
+                            rows.add(List.of(matches.isEmpty() ? "mọi request" : String.join(" · ", matches), backends, filters));
+                        }
+                        out.add(table("Định tuyến", List.of("Khớp", "Backend", "Filter"), rows));
+                        out.add(table("Gắn vào", List.of("Gateway", "Section"), maps(spec.get("parentRefs")).stream().map(p ->
+                                List.of((p.get("namespace") != null ? p.get("namespace") + "/" : "") + s(p.get("name")), s(p.get("sectionName")))).toList()));
+                    }
+                    case "IngressRoute", "IngressRouteTCP", "IngressRouteUDP" -> out.add(table("Định tuyến", List.of("Khớp", "Service", "Middleware"),
+                            maps(spec.get("routes")).stream().map(rt -> List.of(Objects.requireNonNullElse(s(rt.get("match")), "mọi request"),
+                                    maps(rt.get("services")).stream().map(x -> s(x.get("name")) + (x.get("port") != null ? ":" + x.get("port") : "")).reduce((a, b) -> a + ", " + b).orElse("—"),
+                                    maps(rt.get("middlewares")).stream().map(x -> s(x.get("name"))).reduce((a, b) -> a + ", " + b).orElse("—"))).toList()));
+                    default -> { }
+                }
+            }
+            default -> { }
+        }
+        return out.stream().filter(t -> !((List<?>) t.get("rows")).isEmpty()).toList();
+    }
+
+    private static Map<String, Object> webhookTable(List<List<String>> rows) {
+        return table("Webhooks", List.of("Tên", "Chặn khi", "Phạm vi", "Gọi tới", "Failure policy"), rows);
+    }
+
+    private static List<String> webhookRow(String name, List<io.fabric8.kubernetes.api.model.admissionregistration.v1.RuleWithOperations> rules,
+                                           String failure, LabelSelector nsSel, LabelSelector objSel,
+                                           io.fabric8.kubernetes.api.model.admissionregistration.v1.WebhookClientConfig cc, Integer timeout) {
+        String when = nz(rules).stream().map(r -> String.join("/", nz(r.getOperations())) + " " + resources(r.getApiGroups(), r.getResources()))
+                .reduce((a, b) -> a + "; " + b).orElse("—");
+        String scope = selector("namespace", nsSel) + (objSel != null && (objSel.getMatchLabels() != null || objSel.getMatchExpressions() != null) ? "; " + selector("object", objSel) : "");
+        String target = cc == null ? "—" : cc.getService() != null ? "svc " + cc.getService().getNamespace() + "/" + cc.getService().getName()
+                + (cc.getService().getPort() != null ? ":" + cc.getService().getPort() : "") + Objects.requireNonNullElse(cc.getService().getPath(), "") : String.valueOf(cc.getUrl());
+        return List.of(name, when, scope, target, Objects.requireNonNullElse(failure, "Fail") + (timeout != null ? " · timeout " + timeout + "s" : ""));
+    }
+
+    private static String selector(String what, LabelSelector sel) {
+        if (sel == null || (nz(sel.getMatchLabels()).isEmpty() && nz(sel.getMatchExpressions()).isEmpty())) return "mọi " + what;
+        List<String> parts = new ArrayList<>();
+        nz(sel.getMatchLabels()).forEach((k, v) -> parts.add(k + "=" + v));
+        nz(sel.getMatchExpressions()).forEach(e -> parts.add(e.getKey() + " " + e.getOperator() + (e.getValues() == null ? "" : " (" + String.join(",", e.getValues()) + ")")));
+        return what + " " + String.join(", ", parts);
+    }
+
+    private static String resources(List<String> groups, List<String> res) {
+        String g = nz(groups).stream().map(x -> x.isEmpty() ? "core" : x).reduce((a, b) -> a + "," + b).orElse("*");
+        return String.join(", ", nz(res)) + " (" + g + ")";
+    }
+
+    private static String routeMatch(Map<String, Object> m) {
+        List<String> p = new ArrayList<>();
+        if (m.get("path") instanceof Map<?, ?> path) p.add(s(path.get("type")) + " " + s(path.get("value")));
+        if (m.get("method") != null) p.add(s(m.get("method")));
+        if (m.get("headers") instanceof List<?> h) p.add(h.size() + " header");
+        if (m.get("queryParams") instanceof List<?> q) p.add(q.size() + " query");
+        return String.join(" ", p);
+    }
+
+    private static String q(Map<String, Quantity> m, String k) { return m == null || m.get(k) == null ? "—" : m.get(k).toString(); }
+
+    private static String s(Object o) { return o == null ? "—" : String.valueOf(o); }
+
+    @SuppressWarnings("unchecked")
+    private static List<Map<String, Object>> maps(Object o) {
+        if (!(o instanceof List<?> l)) return List.of();
+        return l.stream().filter(x -> x instanceof Map).map(x -> (Map<String, Object>) x).toList();
+    }
+
+    /** route status is per parent (status.parents[].conditions): flatten, naming the Gateway in the reason */
+    @SuppressWarnings("unchecked")
+    private static List<Map<String, Object>> parentConditions(GenericKubernetesResource r) {
+        if (!(r.getAdditionalProperties().get("status") instanceof Map<?, ?> st)) return List.of();
+        List<Map<String, Object>> out = new ArrayList<>();
+        for (Map<String, Object> p : maps(st.get("parents"))) {
+            String gw = p.get("parentRef") instanceof Map<?, ?> ref ? String.valueOf(ref.get("name")) : "?";
+            for (Map<String, Object> c : maps(p.get("conditions"))) {
+                Map<String, Object> v = new LinkedHashMap<>();
+                for (String k : List.of("type", "status", "reason", "message", "lastTransitionTime")) if (c.get(k) != null) v.put(k, c.get(k));
+                v.put("reason", "Gateway " + gw + (c.get("reason") != null ? " · " + c.get("reason") : ""));
+                out.add(v);
+            }
+        }
         return out;
     }
 

@@ -255,7 +255,7 @@ public class KubeConnection {
         props.setProperty("file", f.startsWith(dir) ? dir.relativize(f).toString() : f.toString());
         props.setProperty("context", sel.context());
         try (Writer w = Files.newBufferedWriter(dir.resolve(SELECTED))) {
-            props.store(w, "cluster chosen in the K8s Studio UI");
+            props.store(w, "cluster chosen in the Kubemap UI");
         } catch (IOException e) {
             log.warn("cannot save cluster selection: {}", e.getMessage());
         }
